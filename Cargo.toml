@@ -1,0 +1,9 @@
+[package]
+name = "luminance_procedural_world"
+version = "0.1.0"
+authors = ["twetzel59 <twetzel59@gmail.com>"]
+
+[dependencies]
+gl = "0.6.5"
+luminance = "0.23.1"
+luminance-glfw = "0.4.1"
