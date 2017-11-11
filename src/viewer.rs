@@ -7,7 +7,7 @@ use luminance::shader::program::Program;
 use luminance_glfw::{Device, Key, WindowDim, WindowOpt, WindowEvent};
 use luminance_glfw::*;
 use maths::*;
-use shader::TerrainUniforms;
+use shader::{self, TerrainUniforms};
 
 const SCREEN_SIZE: (u32, u32) = (500, 500);
 
@@ -22,8 +22,8 @@ const VERTICES: [Vertex; 3] = [
   
 ];
 
-const SHADERS: (&str, &str) = (include_str!("../data/vs.glsl"),
-                               include_str!("../data/fs.glsl"));
+//const SHADERS: (&str, &str) = (include_str!("../data/vs.glsl"),
+//                               include_str!("../data/fs.glsl"));
 
 /// The core of the app, manages the program.
 pub struct Viewer;
@@ -38,8 +38,10 @@ impl Viewer {
                             
         let model = Tess::new(Mode::Triangle, TessVertices::Fill(&VERTICES), None);
         
+        let (vs, fs) = shader::load_shader_text("vs", "fs");
+        
         let (shader, warnings) = Program::<Vertex, (), TerrainUniforms>
-            ::from_strings(None, SHADERS.0, None, SHADERS.1).unwrap();
+            ::from_strings(None, &vs, None, &fs).unwrap();
         
         for warn in &warnings {
             eprintln!("{:?}", warn);

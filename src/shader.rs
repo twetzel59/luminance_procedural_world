@@ -8,6 +8,7 @@ use luminance::shader::program::{ProgramError, Uniform, UniformBuilder,
                                  UniformInterface, UniformWarning};
 
 const SHADER_DIR: &str = "shaders";
+const EXTENTION: &str = ".glsl";
 
 /// Load shader source from shader names.
 /// **Note:** the arguments take the filename, not the path.
@@ -19,10 +20,10 @@ pub fn load_shader_text(vertex: &str, fragment: &str) -> (String, String) {
     let mut dir = SHADER_DIR.to_string();
     dir.push(MAIN_SEPARATOR);
     
-    File::open(dir.clone() + vertex).unwrap()
+    File::open(dir.clone() + vertex + EXTENTION).unwrap()
         .read_to_string(&mut vs).unwrap();
         
-    File::open(dir + fragment).unwrap()
+    File::open(dir + fragment + EXTENTION).unwrap()
         .read_to_string(&mut fs).unwrap();
     
     (vs, fs)
