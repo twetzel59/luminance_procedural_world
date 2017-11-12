@@ -33,6 +33,7 @@ pub fn load_shader_text(vertex: &str, fragment: &str) -> (String, String) {
 pub struct TerrainUniforms {
     /// Model transform.
     pub model_matrix: Uniform<M44>,
+    pub projection_matrix: Uniform<M44>,
 }
 
 impl UniformInterface for TerrainUniforms {
@@ -40,9 +41,11 @@ impl UniformInterface for TerrainUniforms {
             -> Result<(TerrainUniforms, Vec<UniformWarning>), ProgramError> {
         
         let model_matrix = builder.ask("model_matrix").unwrap();
+        let projection_matrix = builder.ask("projection_matrix").unwrap();
         
         Ok((TerrainUniforms {
             model_matrix,
+            projection_matrix,
         }, Vec::new()))
     }
 }

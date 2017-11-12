@@ -49,7 +49,11 @@ impl Viewer {
         
         let screen = Framebuffer::default([SCREEN_SIZE.0, SCREEN_SIZE.1]);
         
-        let matrix = Translation::new(-0.2, 0.4, 0.0).to_matrix();
+        let pi = ::std::f32::consts::PI;
+        let projection_mat = Projection::new(70. * (pi / 180.),
+                                             SCREEN_SIZE.0 as f32 / SCREEN_SIZE.1 as f32,
+                                             0.1, 100.0).to_matrix();
+        let model_mat = Translation::new(-0.2, 0.4, -0.5).to_matrix();
         
         'app: loop {
             for ev in device.events() {
@@ -64,7 +68,8 @@ impl Viewer {
                 entry(|_| {
                     pipeline(&screen, [0., 0., 0., 1.], |shade_gate| {
                         shade_gate.shade(&shader, |render_gate, uniforms| {
-                            uniforms.model_matrix.update(matrix);
+                            uniforms.model_matrix.update(model_mat);
+                            uniforms.projection_matrix.update(projection_mat);
                             
                             render_gate.render(None, true, |tess_gate| {
                                 //unsafe { gl::Enable(gl::CULL_FACE); }

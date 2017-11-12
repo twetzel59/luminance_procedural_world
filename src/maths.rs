@@ -72,3 +72,45 @@ impl ToMatrix for Translation {
         ]
     }
 }
+
+/// Stores a 3D projection
+pub struct Projection {
+    pub fov: f32,
+    pub aspect: f32,
+    pub near: f32,
+    pub far: f32,
+}
+
+impl Projection {
+    /// Create a new Projection with these values.
+    /// # Parameters
+    /// * `fov`: Field of view **in radians**
+    /// * `aspect`: Aspect ratio
+    /// * `near` and `far`: Clipping planes
+    pub fn new(fov: f32, aspect: f32, near: f32, far: f32) -> Projection {
+        Projection {
+            fov,
+            aspect,
+            near,
+            far
+        }
+    }
+}
+
+impl ToMatrix for Projection {
+    fn to_matrix(&self) -> M44 {
+        let fov_expr = 1. / (self.fov / 2.).tan();
+        let aspect = self.aspect;
+        let near = self.near;
+        let far = self.far;
+        let ndist = far - near;
+        let fdist = far + near;
+        
+        mat4! [
+            fov_expr / aspect,  0.,                 0.,                 0.,
+            0.,                 fov_expr,           0.,                 0.,
+            0.,                 0.,                 -fdist / ndist,     -(2. * far * near) / ndist,
+            0.,                 0.,                 -1.,                0.,
+        ]
+    }
+}
