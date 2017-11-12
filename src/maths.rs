@@ -60,6 +60,13 @@ impl Translation {
             z,
         }
     }
+    
+    /// Shift the translation by this offset
+    pub fn slide(&mut self, x: f32, y: f32, z: f32) {
+        self.x += x;
+        self.y += y;
+        self.z += z;
+    }
 }
 
 impl ToMatrix for Translation {

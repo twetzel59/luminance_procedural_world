@@ -3,7 +3,8 @@ name = "luminance_procedural_world"
 version = "0.1.0"
 authors = ["twetzel59 <twetzel59@gmail.com>"]
 
+[dependencies.luminance-glfw]
+git = "https://github.com/twetzel59/luminance-glfw.git"
+
 [dependencies]
-gl = "0.6.5"
-luminance = "0.23.1"
-luminance-glfw = "0.4.1"
+luminance = "0.24.0"

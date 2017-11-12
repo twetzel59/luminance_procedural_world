@@ -20,7 +20,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "cmake"
-version = "0.1.26"
+version = "0.1.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "cc 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -87,7 +87,7 @@ name = "glfw-sys"
 version = "3.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "cmake 0.1.26 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cmake 0.1.27 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -107,7 +107,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "luminance"
-version = "0.23.1"
+version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "gl 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -116,7 +116,7 @@ dependencies = [
 [[package]]
 name = "luminance-glfw"
 version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+https://github.com/twetzel59/luminance-glfw.git#cb1c3ccd835a572ec973aa3c0ed32261b8d3a76b"
 dependencies = [
  "gl 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "glfw 0.16.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -132,9 +132,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "luminance_procedural_world"
 version = "0.1.0"
 dependencies = [
- "gl 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "luminance 0.23.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "luminance-glfw 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "luminance 0.24.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "luminance-glfw 0.4.1 (git+https://github.com/twetzel59/luminance-glfw.git)",
 ]
 
 [[package]]
@@ -243,7 +242,7 @@ dependencies = [
 "checksum bitflags 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)" = "1370e9fc2a6ae53aea8b7a5110edbd08836ed87c88736dfabccade1c2b44bff4"
 "checksum bitflags 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f5cde24d1b2e2216a726368b2363a273739c91f4e3eb4e0dd12d672d396ad989"
 "checksum cc 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "a9b13a57efd6b30ecd6598ebdb302cca617930b5470647570468a65d12ef9719"
-"checksum cmake 0.1.26 (registry+https://github.com/rust-lang/crates.io-index)" = "357c07e7a1fc95732793c1edb5901e1a1f305cfcf63a90eb12dbd22bdb6b789d"
+"checksum cmake 0.1.27 (registry+https://github.com/rust-lang/crates.io-index)" = "9b0ec063cbc2034e27f7166d04aa7aa1b9ed85b6c7c2414fb68aff20d1ebf604"
 "checksum enum_primitive 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "be4551092f4d519593039259a9ed8daedf0da12e5109c5280338073eaeb81180"
 "checksum fuchsia-zircon 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "f6c0581a4e363262e52b87f59ee2afe3415361c6ec35e665924eb08afe8ff159"
 "checksum fuchsia-zircon-sys 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "43f3795b4bae048dc6123a6b972cadde2e676f9ded08aef6bb77f5f157684a82"
@@ -254,8 +253,8 @@ dependencies = [
 "checksum khronos_api 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d867c645cfeb8a7fec503731679eac03ac11b7105aa5a71cb8f8ee5271636add"
 "checksum libc 0.2.33 (registry+https://github.com/rust-lang/crates.io-index)" = "5ba3df4dcb460b9dfbd070d41c94c19209620c191b0340b929ce748a2bcd42d2"
 "checksum log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)" = "880f77541efa6e5cc74e76910c9884d9859683118839d6a1dc3b11e63512565b"
-"checksum luminance 0.23.1 (registry+https://github.com/rust-lang/crates.io-index)" = "9bbd13b398a21df56db38e317d0d17580ea1152a9a88ee50114fc1f838eb5c17"
-"checksum luminance-glfw 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "e197288cc1dd0f57ef9d30d578529c6c835368143ff27e5734135c03201b858e"
+"checksum luminance 0.24.0 (registry+https://github.com/rust-lang/crates.io-index)" = "22b8d759844329e02790bef7b0da1190beb1564e831d8db9144c085be5b9c507"
+"checksum luminance-glfw 0.4.1 (git+https://github.com/twetzel59/luminance-glfw.git)" = "<none>"
 "checksum luminance-windowing 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "7ff18f81ae6b1679919733c5469ea8b9fe406552498b6452e529b99b4972aa9e"
 "checksum nom 1.2.4 (registry+https://github.com/rust-lang/crates.io-index)" = "a5b8c256fd9471521bcb84c3cdba98921497f1a331cbc15b8030fc63b82050ce"
 "checksum num 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)" = "a311b77ebdc5dd4cf6449d81e4135d9f0e3b153839ac90e648a8ef538f923525"
