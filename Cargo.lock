@@ -116,7 +116,7 @@ dependencies = [
 [[package]]
 name = "luminance-glfw"
 version = "0.4.1"
-source = "git+https://github.com/twetzel59/luminance-glfw.git#cb1c3ccd835a572ec973aa3c0ed32261b8d3a76b"
+source = "git+https://github.com/twetzel59/luminance-glfw.git#49b154ce0742d0ddba8f28ef1097a695bd3faeff"
 dependencies = [
  "gl 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "glfw 0.16.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -132,6 +132,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "luminance_procedural_world"
 version = "0.1.0"
 dependencies = [
+ "glfw 0.16.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "luminance 0.24.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "luminance-glfw 0.4.1 (git+https://github.com/twetzel59/luminance-glfw.git)",
 ]

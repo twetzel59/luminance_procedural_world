@@ -7,4 +7,5 @@ authors = ["twetzel59 <twetzel59@gmail.com>"]
 git = "https://github.com/twetzel59/luminance-glfw.git"
 
 [dependencies]
+glfw = "0.16"
 luminance = "0.24.0"

@@ -1,18 +1,20 @@
 //! The main entry point.
 
 use std::time::Instant;
+use glfw::CursorMode;
 use luminance::framebuffer::Framebuffer;
 use luminance::pipeline::{entry, pipeline, RenderState};
 use luminance::tess::{Mode, Tess, TessVertices};
 use luminance::shader::program::Program;
 use luminance_glfw::{Device, Key, WindowDim, WindowOpt, WindowEvent};
 use luminance_glfw::*;
-use camera::Camera;
+use camera::{Camera, MovementDirection};
 use maths::*;
 use shader::{self, TerrainUniforms};
 
 const SCREEN_SIZE: (u32, u32) = (800, 800);
 const SPEED: f32 = 1.;
+const SENSITIVITY: f32 = 0.02;
 
 type Position = [f32; 3];
 type Color = [f32; 3];
@@ -38,6 +40,8 @@ impl Viewer {
                             WindowDim::Windowed(SCREEN_SIZE.0, SCREEN_SIZE.1),
                             "luminance_basic",
                             WindowOpt::default()).unwrap();
+                            
+        device.lib_handle_mut().set_cursor_mode(CursorMode::Disabled);
                             
         let model = Tess::new(Mode::Triangle, TessVertices::Fill(&VERTICES), None);
         
@@ -94,25 +98,25 @@ impl Viewer {
             
             match device.lib_handle().get_key(Key::W) {
                 Action::Press | Action::Repeat =>
-                    camera.translation_mut().slide(0., 0., -SPEED * delta),
+                    camera.move_dir(MovementDirection::Forward, SPEED * delta),
                 Action::Release => {},
             }
             
             match device.lib_handle().get_key(Key::S) {
                 Action::Press | Action::Repeat =>
-                    camera.translation_mut().slide(0., 0., SPEED * delta),
+                    camera.move_dir(MovementDirection::Backward, SPEED * delta),
                 Action::Release => {},
             }
             
             match device.lib_handle().get_key(Key::A) {
                 Action::Press | Action::Repeat =>
-                    camera.translation_mut().slide(-SPEED * delta, 0., 0.),
+                    camera.move_dir(MovementDirection::Left, SPEED * delta),
                 Action::Release => {},
             }
             
             match device.lib_handle().get_key(Key::D) {
                 Action::Press | Action::Repeat =>
-                    camera.translation_mut().slide(SPEED * delta, 0., 0.),
+                    camera.move_dir(MovementDirection::Right, SPEED * delta),
                 Action::Release => {},
             }
             
@@ -153,7 +157,14 @@ impl Viewer {
             }
             
             //println!("camera: {:?}", camera.to_matrix());
-            println!("camera rotation: {:?}", camera.rotation());
+            //println!("camera rotation: {:?}", camera.rotation());
+            
+            //println!("mouse pos: {:?}", device.lib_handle().get_cursor_pos());
+            let mouse_pos = device.lib_handle().get_cursor_pos();
+            let mouse_pos = (mouse_pos.0 as f32, mouse_pos.1 as f32);
+            camera.rotation_mut().spin(SPEED * delta * -mouse_pos.1 * SENSITIVITY,
+                                       SPEED * delta * -mouse_pos.0 * SENSITIVITY);
+            device.lib_handle_mut().set_cursor_pos(0., 0.);
             
             device.draw(|| {
                 entry(|_| {
