@@ -45,6 +45,7 @@ pub trait ToMatrix {
 }
 
 /// Stores a translation
+#[derive(Debug)]
 pub struct Translation {
     pub x: f32,
     pub y: f32,
@@ -61,7 +62,7 @@ impl Translation {
         }
     }
     
-    /// Shift the translation by this offset
+    /// Shift the translation by this offset.
     pub fn slide(&mut self, x: f32, y: f32, z: f32) {
         self.x += x;
         self.y += y;
@@ -80,7 +81,56 @@ impl ToMatrix for Translation {
     }
 }
 
+/// Stores a rotation. Only rotations about the X and Y axis
+/// are preformed.
+#[derive(Debug)]
+pub struct Rotation {
+    pub x: f32,
+    pub y: f32,
+}
+
+impl Rotation {
+    /// Create a new Rotation with these values.
+    pub fn new(x: f32, y: f32) -> Rotation {
+        Rotation {
+            x,
+            y,
+        }
+    }
+    
+    /// Adjust the rotation by this offset.
+    pub fn spin(&mut self, x: f32, y: f32) {
+        self.x += x;
+        self.y += y;
+    }
+}
+
+impl ToMatrix for Rotation {
+    fn to_matrix(&self) -> M44 {
+        let sin = self.x.sin();
+        let cos = self.x.cos();
+        let rx = mat4! [
+            1.,     0.,     0.,     0.,
+            0.,     cos,    -sin,   0.,
+            0.,     sin,    cos,    0.,
+            0.,     0.,     0.,     1.,
+        ];
+        
+        let sin = self.y.sin();
+        let cos = self.y.cos();
+        let ry = mat4! [
+            cos,    0.,     sin,    0.,
+            0.,     1.,     0.,     0.,
+            -sin,   0.,     cos,    0.,
+            0.,     0.,     0.,     1.,
+        ];
+        
+        matrix_mul(&rx, &ry)
+    }
+}
+
 /// Stores a 3D projection
+#[derive(Debug)]
 pub struct Projection {
     pub fov: f32,
     pub aspect: f32,
@@ -120,4 +170,90 @@ impl ToMatrix for Projection {
             0.,                 0.,                 -1.,                0.,
         ]
     }
+}
+
+/// Multiplies two 4x4 matrices, returning the product.
+/// Consider using the overloaded `*` operator instead.
+pub fn matrix_mul(left: &M44, right: &M44) -> M44 {
+    let mut result = mat4! [
+        0., 0., 0., 0.,
+        0., 0., 0., 0.,
+        0., 0., 0., 0.,
+        0., 0., 0., 0.,
+    ];
+    
+    for i in 0..4 {
+        for j in 0..4 {
+            for k in 0..4 {
+                result[i][j] += left[k][j] * right[i][k];
+            }
+        }
+    }
+    
+    /*result = [
+        [left[0][0] * right[0][0] + left[0][1] * right[1][0] + left[0][2] * right[2][0] + left[0][3] * right[3][0],
+         left[1][0] * right[0][1] + left[1][1] * right[1][1] + left[1][2] * right[2][1] + left[1][3] * right[3][1],
+         left[2][0] * right[0][2] + left[2][1] * right[1][2] + left[1][2] * right[2][1] + left[1][3] * right[3][1]
+    ];
+    */
+/*         
+        [left[1][0] * right[0][1] + left[1][1] * right[1][1] + left[0][2] * right[2][0] + left[1][3] * right[3][1],
+         left[1][0] * right[0][1] + left[1][1] * right[1][1] + left[0][2] * right[2][0] + left[1][3] * right[3][1],
+         left[1][0] * right[0][1] + left[1][1] * right[1][1] + left[0][2] * right[2][0] + left[1][3] * right[3][1],
+         left[1][0] * right[0][1] + left[1][1] * right[1][1] + left[0][2] * right[2][0] + left[1][3] * right[3][1]],
+         
+        [left[2][0] * right[0][2] + left[2][1] * right[1][2] + left[2][2] * right[2][2] + left[2][3] * right[3][2],
+         left[2][0] * right[0][2] + left[2][1] * right[1][2] + left[2][2] * right[2][2] + left[2][3] * right[3][2],
+         left[2][0] * right[0][2] + left[2][1] * right[1][2] + left[2][2] * right[2][2] + left[2][3] * right[3][2],
+         left[2][0] * right[0][2] + left[2][1] * right[1][2] + left[2][2] * right[2][2] + left[2][3] * right[3][2]],
+         
+        [left[3][0] * right[0][3] + left[3][1] * right[1][3] + left[3][2] * right[2][3] + left[3][3] * right[3][3],
+         left[3][0] * right[0][3] + left[3][1] * right[1][3] + left[3][2] * right[2][3] + left[3][3] * right[3][3],
+         left[3][0] * right[0][3] + left[3][1] * right[1][3] + left[3][2] * right[2][3] + left[3][3] * right[3][3],
+         left[3][0] * right[0][3] + left[3][1] * right[1][3] + left[3][2] * right[2][3] + left[3][3] * right[3][3]],
+    ];
+*/
+    
+    /*
+    for row in left.iter().enumerate() {
+        result[row.0] = [
+            [row.1[0] * right[0][0] + row.1[1] * right[1][0] + row.1[2] * right[2][0] + row.1[3] * right[3][0],
+             row.1[0] * right[0][0] + row.1[1] * right[1][0] + row.1[2] * right[2][0] + row.1[3] * right[3][0],
+             row.1[0] * right[0][0] + row.1[1] * right[1][0] + row.1[2] * right[2][0] + row.1[3] * right[3][0],
+             row.1[0] * right[0][0] + row.1[1] * right[1][0] + row.1[2] * right[2][0] + row.1[3] * right[3][0]],
+             
+            [row.1[0] * right[0][1] + row.1[1] * right[1][1] + row.1[2] * right[2][0] + row.1[3] * right[3][1],
+             row.1[0] * right[0][1] + row.1[1] * right[1][1] + row.1[2] * right[2][0] + row.1[3] * right[3][1],
+             row.1[0] * right[0][1] + row.1[1] * right[1][1] + row.1[2] * right[2][0] + row.1[3] * right[3][1],
+             row.1[0] * right[0][1] + row.1[1] * right[1][1] + row.1[2] * right[2][0] + row.1[3] * right[3][1]],
+             
+            [row.1[0] * right[0][2] + row.1[1] * right[1][2] + row.1[2] * right[2][2] + row.1[3] * right[3][2],
+             row.1[0] * right[0][2] + row.1[1] * right[1][2] + row.1[2] * right[2][2] + row.1[3] * right[3][2],
+             row.1[0] * right[0][2] + row.1[1] * right[1][2] + row.1[2] * right[2][2] + row.1[3] * right[3][2],
+             row.1[0] * right[0][2] + row.1[1] * right[1][2] + row.1[2] * right[2][2] + row.1[3] * right[3][2]],
+             
+            [row.1[0] * right[0][3] + row.1[1] * right[1][3] + row.1[2] * right[2][3] + row.1[3] * right[3][3],
+             row.1[0] * right[0][3] + row.1[1] * right[1][3] + row.1[2] * right[2][3] + row.1[3] * right[3][3],
+             row.1[0] * right[0][3] + row.1[1] * right[1][3] + row.1[2] * right[2][3] + row.1[3] * right[3][3],
+             row.1[0] * right[0][3] + row.1[1] * right[1][3] + row.1[2] * right[2][3] + row.1[3] * right[3][3]],
+        ];
+    */
+        
+    /*
+        for i in row.1.iter().enumerate() {
+            result[row.0][i.0] = i.1 * right[i.0][row.0] +
+                                 i.1 * right[i.0 + 1][row.0] +
+                                 i.1 * right[i.0 + 2][row.0] +
+                                 i.1 * right[i.0 + 3][row.0];
+            
+            /*result[][i.0] = 
+            i.1 * right[i.0][0] +
+            i.1 * right[i.0][1] +
+            i.1 * right[i.0][2] +
+            i.1 * right[i.0][3];*/
+        }
+    }
+    */
+    
+    result
 }
