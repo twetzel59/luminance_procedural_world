@@ -6,6 +6,7 @@
 extern crate glfw;
 extern crate luminance;
 extern crate luminance_glfw;
+extern crate png;
 
 pub use viewer::Viewer;
 

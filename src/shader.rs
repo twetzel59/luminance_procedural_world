@@ -39,20 +39,25 @@ pub struct TerrainUniforms {
     
     /// 3D Projection.
     pub projection_matrix: Uniform<M44>,
+    
+    // /// Terrain Texture Atlas.
+    //pub terrain_tex: Uniform<BoundTexture<'a, Texture<Flat, Dim2, RGB8UI>>>,
 }
 
-impl UniformInterface for TerrainUniforms {
+impl<'a> UniformInterface for TerrainUniforms {
     fn uniform_interface(builder: UniformBuilder)
             -> Result<(TerrainUniforms, Vec<UniformWarning>), ProgramError> {
         
         let model_matrix = builder.ask("model_matrix").unwrap();
         let view_matrix = builder.ask("view_matrix").unwrap();
         let projection_matrix = builder.ask("projection_matrix").unwrap();
+        //let terrain_tex = builder.ask("terrain_tex").unwrap();
         
         Ok((TerrainUniforms {
             model_matrix,
             view_matrix,
             projection_matrix,
+            //terrain_tex,
         }, Vec::new()))
     }
 }

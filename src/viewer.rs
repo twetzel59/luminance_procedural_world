@@ -1,13 +1,18 @@
 //! The main entry point.
 
+use std::f32::consts::PI;
+use std::fs::File;
 use std::time::Instant;
 use glfw::CursorMode;
 use luminance::framebuffer::Framebuffer;
 use luminance::pipeline::{entry, pipeline, RenderState};
+use luminance::pixel::RGB32F;
 use luminance::tess::{Mode, Tess, TessVertices};
+use luminance::texture::{Dim2, Flat, MagFilter, MinFilter, Sampler, Texture};
 use luminance::shader::program::Program;
 use luminance_glfw::{Device, Key, WindowDim, WindowOpt, WindowEvent};
 use luminance_glfw::*;
+use png::{self, Decoder as PngDecoder};
 use camera::{Camera, MovementDirection};
 use maths::*;
 use shader::{self, TerrainUniforms};
@@ -15,15 +20,16 @@ use shader::{self, TerrainUniforms};
 const SCREEN_SIZE: (u32, u32) = (800, 800);
 const SPEED: f32 = 1.;
 const SENSITIVITY: f32 = 0.02;
+const TEXTURE_PATH: &str = "data/tex.png";
 
 type Position = [f32; 3];
-type Color = [f32; 3];
-type Vertex = (Position, Color);
+type UV = [f32; 2];
+type Vertex = (Position, UV);
 
 const VERTICES: [Vertex; 3] = [
-  ([-0.5, -0.5, 0.0], [0.8, 0.5, 0.5]),
-  ([-0.5, 0.5, 0.0], [0.5, 0.8, 0.5]),
-  ([0.5, -0.5, 0.0], [0.5, 0.5, 0.8]),
+  ([-0.5, -0.5, 0.0], [0.0, 1.0]),
+  ([-0.5,  0.5, 0.0], [0.0, 0.0]),
+  ([ 0.5, -0.5, 0.0], [1.0, 1.0]),
   
 ];
 
@@ -42,8 +48,6 @@ impl Viewer {
                             WindowOpt::default()).unwrap();
                             
         device.lib_handle_mut().set_cursor_mode(CursorMode::Disabled);
-                            
-        let model = Tess::new(Mode::Triangle, TessVertices::Fill(&VERTICES), None);
         
         let (vs, fs) = shader::load_shader_text("vs", "fs");
         
@@ -54,10 +58,41 @@ impl Viewer {
             eprintln!("{:?}", warn);
         }
         
+        let png_decoder = PngDecoder::new(File::open(TEXTURE_PATH).unwrap());
+        let (png_info, mut png_reader) = png_decoder.read_info().unwrap();
+        assert_eq!(png_info.color_type, png::ColorType::RGB);
+        assert_eq!(png_info.bit_depth, png::BitDepth::Eight);
+        let mut png_data = vec![0; png_info.buffer_size()];
+        png_reader.next_frame(&mut png_data).unwrap();
+        
+        //println!("size: {:?}", (png_info.width, png_info.height));
+        assert_eq!(png_info.buffer_size() % 3, 0);
+        let mut image = Vec::with_capacity(png_info.buffer_size() / 3);
+        for i in 0..(png_info.buffer_size() / 3) {
+            let x = i * 3;
+            
+            //println!("data: {:?}", &[png_data[x], png_data[x + 1], png_data[x + 2]]);
+            image.push((png_data[x]     as f32 / 255.,
+                        png_data[x + 1] as f32 / 255.,
+                        png_data[x + 2] as f32 / 255.));
+        }
+        
+        let mut sampler = Sampler::default();
+        sampler.min_filter = MinFilter::Nearest;
+        sampler.mag_filter = MagFilter::Nearest;
+        
+        let tex = Texture::<Flat, Dim2, RGB32F>::new(
+                [png_info.width, png_info.height], 0, &sampler).unwrap();
+        tex.upload(false, &image);
+        //tex.upload_raw(false, &png_data);
+        //tex.clear(false, (128, 0, 128));
+        //tex.clear(false, (0.5, 0., 0.5));
+        
+        let model = Tess::new(Mode::Triangle, TessVertices::Fill(&VERTICES), None);
+        
         let screen = Framebuffer::default([SCREEN_SIZE.0, SCREEN_SIZE.1]);
         
-        let pi = ::std::f32::consts::PI;
-        let projection_mat = Projection::new(40. * (pi / 180.),
+        let projection_mat = Projection::new(40. * (PI / 180.),
                                              SCREEN_SIZE.0 as f32 / SCREEN_SIZE.1 as f32,
                                              0.1, 100.0).to_matrix();
         let model_mat = Translation::new(-0.2, 0.4, -1.5).to_matrix();
@@ -167,12 +202,14 @@ impl Viewer {
             device.lib_handle_mut().set_cursor_pos(0., 0.);
             
             device.draw(|| {
-                entry(|_| {
+                entry(|gpu| {
+                    gpu.bind_texture(&tex);
                     pipeline(&screen, [0., 0., 0., 1.], |shade_gate| {
                         shade_gate.shade(&shader, |render_gate, uniforms| {
                             uniforms.model_matrix.update(model_mat);
                             uniforms.view_matrix.update(camera.to_matrix());
                             uniforms.projection_matrix.update(projection_mat);
+                            //uniforms.terrain_tex.update(bound);
                             
                             let render_state = RenderState::default()
                                                .set_face_culling(None);
