@@ -41,10 +41,11 @@ macro_rules! mat4 {
 
 /// Typeclass for types that can be represented by a 4x4 matrix.
 pub trait ToMatrix {
+    /// Get the matrix representing the type's transform.
     fn to_matrix(&self) -> M44;
 }
 
-/// Stores a translation
+/// Stores a translation.
 #[derive(Debug)]
 pub struct Translation {
     pub x: f32,
@@ -129,7 +130,7 @@ impl ToMatrix for Rotation {
     }
 }
 
-/// Stores a 3D projection
+/// Stores a 3D projection.
 #[derive(Debug)]
 pub struct Projection {
     pub fov: f32,
@@ -173,7 +174,6 @@ impl ToMatrix for Projection {
 }
 
 /// Multiplies two 4x4 matrices, returning the product.
-/// Consider using the overloaded `*` operator instead.
 pub fn matrix_mul(left: &M44, right: &M44) -> M44 {
     let mut result = mat4! [
         0., 0., 0., 0.,

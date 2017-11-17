@@ -13,5 +13,6 @@ pub use viewer::Viewer;
 pub mod camera;
 #[macro_use]
 pub mod maths;
+pub mod model;
 pub mod shader;
 pub mod viewer;

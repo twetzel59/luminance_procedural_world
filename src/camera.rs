@@ -1,20 +1,38 @@
 //! The first person camera is in this module.
 
+use std::f32::consts::PI;
 use luminance::linear::M44;
-use maths::{self, Rotation, ToMatrix, Translation};
+use maths::{self, Projection, Rotation, ToMatrix, Translation};
 
+/// A first person camera that moves, rotates along X and Y,
+/// and manages the projection matrix.
 pub struct Camera {
+    _projection: Projection,
+    projection_matrix: M44,
     pos: Translation,
     rot: Rotation,
 }
 
 impl Camera {
     /// Creates a camera centered at the origin (0, 0, 0).
-    pub fn new() -> Camera {
+    pub fn new(window_size: (u32, u32)) -> Camera {
+        let projection = Projection::new(40. * (PI / 180.),
+                                         window_size.0 as f32 / window_size.1 as f32,
+                                         0.1, 100.0);
+        let projection_matrix = projection.to_matrix();
+        
         Camera {
+            _projection: projection,
+            projection_matrix,
             pos: Translation::new(0., 0., 0.,),
             rot: Rotation::new(0., 0.),
         }
+    }
+    
+    /// Return a reference to the precalculated
+    /// projection matrix for the camera.
+    pub fn projection_matrix(&self) -> &M44 {
+        &self.projection_matrix
     }
     
     /// Allows reading of the camera's translation.
