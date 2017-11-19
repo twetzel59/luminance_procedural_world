@@ -1,46 +1,25 @@
 //! The main entry point.
 
-use std::fs::File;
 use std::time::Instant;
 use glfw::CursorMode;
 use luminance::framebuffer::Framebuffer;
-use luminance::pipeline::{entry, pipeline, RenderState};
-use luminance::pixel::RGB32F;
-use luminance::tess::{Mode, Tess, TessVertices};
-use luminance::texture::{Dim2, Flat, MagFilter, MinFilter, Sampler, Texture};
-use luminance::shader::program::{Program, ProgramError, UniformWarning};
-use luminance_glfw::{Device, Key, WindowDim, WindowOpt, WindowEvent};
-use luminance_glfw::*;
-use png::{self, Decoder as PngDecoder};
+use luminance::texture::{Dim2, Flat};
+use luminance_glfw::{Action, Device, GLFWDevice, GLFWDeviceError, Key,
+                     WindowDim, WindowOpt, WindowEvent};
 use camera::{Camera, MovementDirection};
-use maths::*;
-use model::*;
-use shader::{self, TerrainUniforms};
+use model::Drawable;
+use resources::Resources;
+use terrain::Terrain;
 
 const SCREEN_SIZE: (u32, u32) = (800, 800);
 const SPEED: f32 = 1.;
 const SENSITIVITY: f32 = 0.02;
-const TEXTURE_PATH: &str = "data/tex.png";
-
-type Position = [f32; 3];
-type UV = [f32; 2];
-type Vertex = (Position, UV);
-
-const VERTICES: [Vertex; 3] = [
-  ([-0.5, -0.5, 0.0], [0.0, 1.0]),
-  ([-0.5,  0.5, 0.0], [0.0, 0.0]),
-  ([ 0.5, -0.5, 0.0], [1.0, 1.0]),
-  
-];
-
-//const SHADERS: (&str, &str) = (include_str!("../data/vs.glsl"),
-//                               include_str!("../data/fs.glsl"));
 
 /// The core of the app, manages the program.
 pub struct Viewer {
     device: GLFWDevice,
-    shader: Program<Vertex, (), TerrainUniforms>,
     render_target: Framebuffer<Flat, Dim2, (), ()>,
+    resources: Resources,
     camera: Camera,
 }
 
@@ -49,15 +28,10 @@ impl Viewer {
     pub fn run() {
         let device = Self::create_device().unwrap();
         
-        let (shader, warnings) = Self::load_shaders().unwrap();
-        for warn in &warnings {
-            eprintln!("{:?}", warn);
-        }
-        
         Viewer {
             device,
-            shader,
             render_target: Framebuffer::default([SCREEN_SIZE.0, SCREEN_SIZE.1]),
+            resources: Resources::new(),
             camera: Camera::new(SCREEN_SIZE),
         }.start();
     }
@@ -68,58 +42,10 @@ impl Viewer {
                         WindowOpt::default())
     }
     
-    fn load_shaders() ->
-            Result<(Program<Vertex, (), TerrainUniforms>, Vec<UniformWarning>), ProgramError> {
-        
-        let (vs, fs) = shader::load_shader_text("vs", "fs");
-        
-        Program::from_strings(None, &vs, None, &fs)
-    }
-    
     fn start(mut self) {        
         self.device.lib_handle_mut().set_cursor_mode(CursorMode::Disabled);
         
-        let png_decoder = PngDecoder::new(File::open(TEXTURE_PATH).unwrap());
-        let (png_info, mut png_reader) = png_decoder.read_info().unwrap();
-        assert_eq!(png_info.color_type, png::ColorType::RGB);
-        assert_eq!(png_info.bit_depth, png::BitDepth::Eight);
-        let mut png_data = vec![0; png_info.buffer_size()];
-        png_reader.next_frame(&mut png_data).unwrap();
-        
-        //println!("size: {:?}", (png_info.width, png_info.height));
-        assert_eq!(png_info.buffer_size() % 3, 0);
-        let mut image = Vec::with_capacity(png_info.buffer_size() / 3);
-        for i in 0..(png_info.buffer_size() / 3) {
-            let x = i * 3;
-            
-            //println!("data: {:?}", &[png_data[x], png_data[x + 1], png_data[x + 2]]);
-            image.push((png_data[x]     as f32 / 255.,
-                        png_data[x + 1] as f32 / 255.,
-                        png_data[x + 2] as f32 / 255.));
-        }
-        
-        let mut sampler = Sampler::default();
-        sampler.min_filter = MinFilter::Nearest;
-        sampler.mag_filter = MagFilter::Nearest;
-        
-        let tex = Texture::<Flat, Dim2, RGB32F>::new(
-                [png_info.width, png_info.height], 0, &sampler).unwrap();
-        tex.upload(false, &image);
-        //tex.upload_raw(false, &png_data);
-        //tex.clear(false, (128, 0, 128));
-        //tex.clear(false, (0.5, 0., 0.5));
-        
-        let tess = Tess::new(Mode::Triangle, TessVertices::Fill(&VERTICES), None);
-        
-        //let model = Model::new(tess, tex);
-        let model = Model::with_translation(tess, tex, Translation::new(1., 0., -1.));
-        
-        //let projection_mat = Projection::new(40. * (PI / 180.),
-        //                                     SCREEN_SIZE.0 as f32 / SCREEN_SIZE.1 as f32,
-        //                                     0.1, 100.0).to_matrix();
-        //let model_mat = Translation::new(-0.2, 0.4, -1.5).to_matrix();
-        
-        //let mut camera = Camera::new(SCREEN_SIZE);
+        let terrain = Terrain::new(&self.resources);
         
         /*
         let test1 = mat4! [
@@ -150,8 +76,7 @@ impl Viewer {
             }
             self.handle_realtime_input(delta);
             
-            Self::render(&mut self.device, &self.render_target,
-                         &self.shader, &self.camera, &model);
+            terrain.draw(&mut self.device, &self.render_target, &self.camera);
             
             let delta_dur = Instant::now() - begin;          
             delta = delta_dur.as_secs() as f32
@@ -249,31 +174,5 @@ impl Viewer {
         self.camera.rotation_mut().spin(SPEED * delta * -mouse_pos.1 * SENSITIVITY,
                                    SPEED * delta * -mouse_pos.0 * SENSITIVITY);
         self.device.lib_handle_mut().set_cursor_pos(0., 0.);
-    }
-    
-    fn render(device: &mut GLFWDevice,
-              render_target: &Framebuffer<Flat, Dim2, (), ()>,
-              shader: &Program<Vertex, (), TerrainUniforms>,
-              camera: &Camera,
-              model: &Model<Vertex>) {
-        device.draw(|| {
-            entry(|gpu| {
-                gpu.bind_texture(&model.tex);
-                pipeline(render_target, [0., 0., 0., 1.], |shade_gate| {
-                    shade_gate.shade(shader, |render_gate, uniforms| {
-                        uniforms.model_matrix.update(model.to_matrix());
-                        uniforms.view_matrix.update(camera.to_matrix());
-                        uniforms.projection_matrix.update(*camera.projection_matrix());
-                        //uniforms.terrain_tex.update(bound);
-                        
-                        let render_state = RenderState::default()
-                                           .set_face_culling(None);
-                        render_gate.render(render_state, |tess_gate| {
-                            tess_gate.render((&model.tess).into());
-                        });
-                    });
-                });
-            });
-        });
     }
 }

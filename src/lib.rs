@@ -14,5 +14,7 @@ pub mod camera;
 #[macro_use]
 pub mod maths;
 pub mod model;
+pub mod resources;
 pub mod shader;
+pub mod terrain;
 pub mod viewer;
