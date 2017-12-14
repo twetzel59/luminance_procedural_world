@@ -33,20 +33,31 @@ impl Block {
 /// The length of one side of a cubic sector.
 pub const SECTOR_SIZE: usize = 32;
 
-/// The length of an array of blocks for a sector.
-pub const SECTOR_LEN: usize = SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE;
+// The length of an array of blocks for a sector.
+const SECTOR_LEN: usize = SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE;
 
-/// The type of chunk space coordinates.
-#[derive(Debug)]
-pub struct ChunkSpaceCoords(pub u8, pub u8, pub u8);
+/// The type of sector space coordinates.
+#[derive(Clone, Copy, Debug)]
+pub struct SectorSpaceCoords(pub u8, pub u8, pub u8);
 
 /// The array structure of blocks in a `Sector`.
 pub struct BlockList([Block; SECTOR_LEN]);
 
+impl BlockList {
+    /// Look at the block at a specific position in sector coords.
+    /// # Panics
+    /// This function panics if the index is out of range.
+    pub fn get(&self, pos: SectorSpaceCoords) -> &Block {
+        let (x, y, z) = (pos.0 as usize, pos.1 as usize, pos.2 as usize);
+        
+        &self.0[x + y * SECTOR_SIZE + z * SECTOR_SIZE * SECTOR_SIZE]
+    }
+}
+
 /// An iterator over a BlockList.
 pub struct BlockListIter<'a>(iter::Enumerate<slice::Iter<'a, Block>>);
 
-type BlockListIterItem<'a> = (ChunkSpaceCoords, &'a Block);
+type BlockListIterItem<'a> = (SectorSpaceCoords, &'a Block);
 
 impl<'a> Iterator for BlockListIter<'a> {
     type Item = BlockListIterItem<'a>;
@@ -54,9 +65,22 @@ impl<'a> Iterator for BlockListIter<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         match self.0.next() {
             Some(i) => {
-                //let x = 
+                let mut total = i.0;
                 
-                Some((ChunkSpaceCoords(0, 0, 0), i.1))
+                let z = total / (SECTOR_SIZE * SECTOR_SIZE);
+                total -= z * SECTOR_SIZE * SECTOR_SIZE;
+                let z = z as u8;
+                
+                let y = total / SECTOR_SIZE;
+                total -= y * SECTOR_SIZE;
+                let y = y as u8;
+                
+                let x = total;
+                let x = x as u8;
+                
+                //println!("x: {}, y: {}, z: {}", x, y, z);
+                
+                Some((SectorSpaceCoords(x, y, z), i.1))
             },
             None => None,
         }
