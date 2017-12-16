@@ -17,7 +17,8 @@ use resources::Resources;
 #[derive(Clone, Copy, Debug)]
 pub enum Block {
     Air,
-    Granite,
+    Limestone,
+    Loam,
 }
 
 impl Block {
@@ -105,13 +106,15 @@ pub struct Sector {
 impl Sector {
     /// Create a sector filled with `Granite`.
     pub fn new(resources: &Resources) -> Sector {
-        let blocks = BlockList([Block::Granite; SECTOR_LEN]);
+        let blocks = BlockList([Block::Loam; SECTOR_LEN]);
         
-        let vertices = mesh_gen::generate_block_vertices(&blocks);
+        let terrain_tex = resources.terrain_tex();
+        
+        let vertices = mesh_gen::generate_block_vertices(&blocks, &terrain_tex.1);
         let tess = Tess::new(Mode::Triangle, TessVertices::Fill(&vertices), None);
         
         let model = Model::with_translation(tess,
-                                            resources.terrain_tex(),
+                                            terrain_tex,
                                             Translation::new(1., 0., -1.));
         
         Sector {

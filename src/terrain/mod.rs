@@ -69,7 +69,7 @@ impl Drawable for Terrain {
             camera: &Camera) {
         device.draw(|| {
             entry(|gpu| {
-                gpu.bind_texture(&*self.sector.model().tex);
+                gpu.bind_texture(&self.sector.model().tex.0);
                 pipeline(render_target, [0., 0., 0., 1.], |shade_gate| {
                     shade_gate.shade(&self.shader, |render_gate, uniforms| {
                         uniforms.model_matrix.update(self.sector.model().to_matrix());
