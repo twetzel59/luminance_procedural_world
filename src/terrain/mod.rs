@@ -77,8 +77,8 @@ impl Drawable for Terrain {
                         uniforms.projection_matrix.update(*camera.projection_matrix());
                         //uniforms.terrain_tex.update(bound);
                         
-                        let render_state = RenderState::default()
-                                           .set_face_culling(None);
+                        let render_state = RenderState::default();
+                                           //.set_face_culling(None);
                         render_gate.render(render_state, |tess_gate| {
                             tess_gate.render((&self.sector.model().tess).into());
                         });
