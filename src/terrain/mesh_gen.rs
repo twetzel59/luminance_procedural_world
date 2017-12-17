@@ -58,7 +58,7 @@ pub fn generate_block_vertices(block: &BlockList, texture_info: &OutputInfo) -> 
         
         //println!("idx: {}, i: {:?}", x + y * SECTOR_SIZE + z * SECTOR_SIZE * SECTOR_SIZE, i);
         
-        if (i.0).0 % 2 == 0 && (i.0).1 % 2 == 0 && (i.0).2 % 2 == 0 && !i.1.is_air() {
+        if !i.1.is_air() {
             generate_face(&mut v, i, Face::Back, texture_info);
             generate_face(&mut v, i, Face::Front, texture_info);
             generate_face(&mut v, i, Face::Top, texture_info);

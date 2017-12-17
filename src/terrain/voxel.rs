@@ -105,7 +105,7 @@ pub struct Sector {
 
 impl Sector {
     /// Create a sector filled with `Granite`.
-    pub fn new(resources: &Resources) -> Sector {
+    pub fn new(resources: &Resources, pos: (u32, u32, u32)) -> Sector {
         let blocks = BlockList([Block::Loam; SECTOR_LEN]);
         
         let terrain_tex = resources.terrain_tex();
@@ -113,9 +113,13 @@ impl Sector {
         let vertices = mesh_gen::generate_block_vertices(&blocks, &terrain_tex.1);
         let tess = Tess::new(Mode::Triangle, TessVertices::Fill(&vertices), None);
         
-        let model = Model::with_translation(tess,
-                                            terrain_tex,
-                                            Translation::new(1., 0., -1.));
+        let translation = Translation::new((pos.0 as usize * SECTOR_SIZE) as f32,
+                                           (pos.1 as usize * SECTOR_SIZE) as f32,
+                                           (pos.2 as usize * SECTOR_SIZE) as f32);
+                                           
+        //println!("translation: {:?}", translation);
+        
+        let model = Model::with_translation(tess, terrain_tex, translation);
         
         Sector {
             blocks,

@@ -3,6 +3,7 @@
 pub mod mesh_gen;
 pub mod voxel;
 
+use std::collections::HashMap;
 use luminance::framebuffer::Framebuffer;
 use luminance::linear::M44;
 use luminance::pipeline::{entry, pipeline, RenderState};
@@ -29,7 +30,7 @@ type Vertex = (Position, UV);
 /// Drawable manager for world terrain. Handles the rendering
 /// of each sector (**not yet implemented**).
 pub struct Terrain {
-    sector: Sector,
+    sectors: HashMap<(i32, i32, i32), Sector>,
     shader: Program<Vertex, (), Uniforms>,
 }
 
@@ -43,8 +44,13 @@ impl Terrain {
             eprintln!("{:?}", warn);
         }
         
+        let mut sectors = HashMap::new();
+        sectors.insert((0, 0, 0), Sector::new(resources, (0, 0, 0)));
+        sectors.insert((1, 0, 0), Sector::new(resources, (1, 0, 0)));
+        sectors.insert((0, 0, 1), Sector::new(resources, (0, 0, 1)));
+        
         Terrain {
-            sector: Sector::new(resources),
+            sectors,
             shader,
         }
     }
@@ -68,21 +74,25 @@ impl Drawable for Terrain {
             //shader: &Program<Self::Vertex, (), Self::Uniform>,
             camera: &Camera) {
         device.draw(|| {
-            entry(|gpu| {
-                gpu.bind_texture(&self.sector.model().tex.0);
+            entry(|gpu| {                    
+                // TODO: Only bind the texture once, and ensure
+                // that the correct one is used.
                 pipeline(render_target, [0., 0., 0., 1.], |shade_gate| {
-                    shade_gate.shade(&self.shader, |render_gate, uniforms| {
-                        uniforms.model_matrix.update(self.sector.model().to_matrix());
-                        uniforms.view_matrix.update(camera.to_matrix());
-                        uniforms.projection_matrix.update(*camera.projection_matrix());
-                        //uniforms.terrain_tex.update(bound);
-                        
-                        let render_state = RenderState::default();
-                                           //.set_face_culling(None);
-                        render_gate.render(render_state, |tess_gate| {
-                            tess_gate.render((&self.sector.model().tess).into());
+                    for i in self.sectors.values() {
+                        gpu.bind_texture(&i.model().tex.0);
+                        shade_gate.shade(&self.shader, |render_gate, uniforms| {
+                            uniforms.model_matrix.update(i.model().to_matrix());
+                            uniforms.view_matrix.update(camera.to_matrix());
+                            uniforms.projection_matrix.update(*camera.projection_matrix());
+                            //uniforms.terrain_tex.update(bound);
+                            
+                            let render_state = RenderState::default();
+                                               //.set_face_culling(None);
+                            render_gate.render(render_state, |tess_gate| {
+                                tess_gate.render((&i.model().tess).into());
+                            });
                         });
-                    });
+                    }
                 });
             });
         });
