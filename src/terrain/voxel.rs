@@ -61,6 +61,66 @@ impl SectorSpaceCoords {
         }
     }
     
+    /// If possible, create the coord for the block
+    /// behind this one.
+    pub fn back(&self) -> Option<SectorSpaceCoords> {
+        if (self.z as usize) > 0 {
+            Some(Self::new(self.x, self.y, self.z - 1))
+        } else {
+            None
+        }
+    }
+    
+    /// If possible, create the coord for the block
+    /// in front of this one.
+    pub fn front(&self) -> Option<SectorSpaceCoords> {
+        if (self.z as usize) < SECTOR_SIZE - 1 {
+            Some(Self::new(self.x, self.y, self.z + 1))
+        } else {
+            None
+        }
+    }
+    
+    /// If possible, create the coord for the block
+    /// above this one.
+    pub fn top(&self) -> Option<SectorSpaceCoords> {
+        if (self.y as usize) < SECTOR_SIZE - 1 {
+            Some(Self::new(self.x, self.y + 1, self.z))
+        } else {
+            None
+        }
+    }
+    
+    /// If possible, create the coord for the block
+    /// below this one.
+    pub fn bottom(&self) -> Option<SectorSpaceCoords> {
+        if (self.y as usize) > 0 {
+            Some(Self::new(self.x, self.y - 1, self.z))
+        } else {
+            None
+        }
+    }
+    
+    /// If possible, create the coord for the block
+    /// to the left of this one.
+    pub fn left(&self) -> Option<SectorSpaceCoords> {
+        if (self.x as usize) > 0 {
+            Some(Self::new(self.x - 1, self.y, self.z))
+        } else {
+            None
+        }
+    }
+    
+    /// If possible, create the coord for the block
+    /// to the right of this one.
+    pub fn right(&self) -> Option<SectorSpaceCoords> {
+        if (self.x as usize) < SECTOR_SIZE - 1 {
+            Some(Self::new(self.x + 1, self.y, self.z))
+        } else {
+            None
+        }
+    }
+    
     pub fn x(&self) -> u8 { self.x }
     pub fn y(&self) -> u8 { self.y }
     pub fn z(&self) -> u8 { self.z }

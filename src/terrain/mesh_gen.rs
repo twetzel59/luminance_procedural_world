@@ -48,23 +48,36 @@ enum Face {
 }
 
 /// Generate the mesh for a `BlockList`.
-pub fn generate_block_vertices(block: &BlockList, texture_info: &OutputInfo) -> Vec<Vertex> {
+pub fn generate_block_vertices(blocks: &BlockList, texture_info: &OutputInfo) -> Vec<Vertex> {
+    use self::Face::*;
+    
     let mut v = Vec::new();
     
-    for i in block {
-        //let x = (i.0).0 as usize;
-        //let y = (i.0).1 as usize;
-        //let z = (i.0).2 as usize;
-        
-        //println!("idx: {}, i: {:?}", x + y * SECTOR_SIZE + z * SECTOR_SIZE * SECTOR_SIZE, i);
-        
+    for i in blocks {
         if !i.1.is_air() {
-            generate_face(&mut v, i, Face::Back, texture_info);
-            generate_face(&mut v, i, Face::Front, texture_info);
-            generate_face(&mut v, i, Face::Top, texture_info);
-            generate_face(&mut v, i, Face::Bottom, texture_info);
-            generate_face(&mut v, i, Face::Left, texture_info);
-            generate_face(&mut v, i, Face::Right, texture_info);
+            if should_create_face(Back, i.0, blocks) {
+                generate_face(&mut v, i, Back, texture_info);
+            }
+            
+            if should_create_face(Front, i.0, blocks) {
+                generate_face(&mut v, i, Front, texture_info);
+            }
+            
+            if should_create_face(Top, i.0, blocks) {
+                generate_face(&mut v, i, Top, texture_info);
+            }
+            
+            if should_create_face(Bottom, i.0, blocks) {
+                generate_face(&mut v, i, Bottom, texture_info);
+            }
+            
+            if should_create_face(Left, i.0, blocks) {
+                generate_face(&mut v, i, Left, texture_info);
+            }
+            
+            if should_create_face(Right, i.0, blocks) {
+                generate_face(&mut v, i, Right, texture_info);
+            }
         }
     }
     
@@ -73,6 +86,21 @@ pub fn generate_block_vertices(block: &BlockList, texture_info: &OutputInfo) -> 
     println!("done!");
     
     v
+}
+
+fn should_create_face(face: Face, coord: SectorSpaceCoords, blocks: &BlockList) -> bool {
+    use self::Face::*;
+    
+    let other = match face {
+        Back => coord.back(),
+        Front => coord.front(),
+        Top => coord.top(),
+        Bottom => coord.bottom(),
+        Left => coord.left(),
+        Right => coord.right(),
+    };
+    
+    other.map_or(true, |c| blocks.get(c).is_air())
 }
 
 fn generate_face(v: &mut Vec<Vertex>, block: (SectorSpaceCoords, &Block),
