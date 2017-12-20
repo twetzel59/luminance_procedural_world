@@ -92,7 +92,7 @@ fn generate_face(v: &mut Vec<Vertex>, block: (SectorSpaceCoords, &Block),
         Right => ([3, 2, 5, 4], uvs),
     };
     
-    let original = ((block.0).0 as f32, (block.0).1 as f32, (block.0).2 as f32);
+    let original = ((block.0).x() as f32, (block.0).y() as f32, (block.0).z() as f32);
     
     let mut vtx0 = (POSITIONS[triangles[0]], uv.0);
     vtx0.0[0] += original.0;

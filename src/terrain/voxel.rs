@@ -39,17 +39,40 @@ const SECTOR_LEN: usize = SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE;
 
 /// The type of sector space coordinates.
 #[derive(Clone, Copy, Debug)]
-pub struct SectorSpaceCoords(pub u8, pub u8, pub u8);
+pub struct SectorSpaceCoords {
+    x: u8,
+    y: u8,
+    z: u8,
+}
+
+impl SectorSpaceCoords {
+    /// Create a new coordinate triple.
+    /// # Panics
+    /// Panics if any component is >= `SECTOR_SIZE`.
+    pub fn new(x: u8, y: u8, z: u8) -> SectorSpaceCoords {
+        if x as usize >= SECTOR_SIZE || y as usize >= SECTOR_SIZE || z as usize >= SECTOR_SIZE {
+            panic!("SectorSpaceCoords out of range");
+        }
+        
+        SectorSpaceCoords {
+            x,
+            y,
+            z,
+        }
+    }
+    
+    pub fn x(&self) -> u8 { self.x }
+    pub fn y(&self) -> u8 { self.y }
+    pub fn z(&self) -> u8 { self.z }
+}
 
 /// The array structure of blocks in a `Sector`.
 pub struct BlockList([Block; SECTOR_LEN]);
 
 impl BlockList {
     /// Look at the block at a specific position in sector coords.
-    /// # Panics
-    /// This function panics if the index is out of range.
     pub fn get(&self, pos: SectorSpaceCoords) -> &Block {
-        let (x, y, z) = (pos.0 as usize, pos.1 as usize, pos.2 as usize);
+        let (x, y, z) = (pos.x() as usize, pos.y() as usize, pos.z() as usize);
         
         &self.0[x + y * SECTOR_SIZE + z * SECTOR_SIZE * SECTOR_SIZE]
     }
@@ -81,7 +104,7 @@ impl<'a> Iterator for BlockListIter<'a> {
                 
                 //println!("x: {}, y: {}, z: {}", x, y, z);
                 
-                Some((SectorSpaceCoords(x, y, z), i.1))
+                Some((SectorSpaceCoords::new(x, y, z), i.1))
             },
             None => None,
         }
