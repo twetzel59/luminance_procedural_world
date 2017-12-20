@@ -12,7 +12,7 @@ use resources::Resources;
 use terrain::Terrain;
 
 const SCREEN_SIZE: (u32, u32) = (800, 800);
-const SPEED: f32 = 1.;
+const SPEED: f32 = 10.;
 const SENSITIVITY: f32 = 0.02;
 
 /// The core of the app, manages the program.

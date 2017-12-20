@@ -4,11 +4,11 @@ use std::fs::File;
 use std::rc::Rc;
 use luminance::pixel::RGB32F;
 use luminance::texture::{Dim2, Flat, MagFilter, MinFilter, Sampler, Texture};
-use png::{self, Decoder};
+use png::{self, Decoder, OutputInfo};
 
 /// A simple resource manager that can load and provide resources.
 pub struct Resources {
-    terrain_tex: Rc<Texture<Flat, Dim2, RGB32F>>,
+    terrain_tex: Rc<(Texture<Flat, Dim2, RGB32F>, OutputInfo)>,
 }
 
 impl Resources {
@@ -18,16 +18,16 @@ impl Resources {
     /// could not be loaded from disk.
     pub fn new() -> Resources {
         Resources {
-            terrain_tex: Rc::new(Self::load_texture(File::open("data/tex.png").unwrap())),
+            terrain_tex: Rc::new(Self::load_texture(File::open("data/atlas.png").unwrap())),
         }
     }
     
     /// Get terrain texture.
-    pub fn terrain_tex(&self) -> Rc<Texture<Flat, Dim2, RGB32F>> {
+    pub fn terrain_tex(&self) -> Rc<(Texture<Flat, Dim2, RGB32F>, OutputInfo)> {
         self.terrain_tex.clone()
     }
     
-    fn load_texture(file: File) -> Texture<Flat, Dim2, RGB32F> {
+    fn load_texture(file: File) -> (Texture<Flat, Dim2, RGB32F>, OutputInfo) {
         let png_decoder = Decoder::new(file);
         let (png_info, mut png_reader) = png_decoder.read_info().unwrap();
         assert_eq!(png_info.color_type, png::ColorType::RGB);
@@ -55,6 +55,6 @@ impl Resources {
                 [png_info.width, png_info.height], 0, &sampler).unwrap();
         tex.upload(false, &image);
         
-        tex
+        (tex, png_info)
     }
 }

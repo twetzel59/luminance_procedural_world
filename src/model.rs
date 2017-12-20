@@ -9,6 +9,7 @@ use luminance::pixel::RGB32F;
 use luminance::tess::Tess;
 use luminance::texture::{Dim2, Flat, Texture};
 use luminance_glfw::GLFWDevice;
+use png::OutputInfo;
 use camera::Camera;
 use maths::{ToMatrix, Translation};
 
@@ -22,7 +23,7 @@ pub struct Model<V> {
     pub tess: Tess<V>,
     
     /// The texture for the model.
-    pub tex: Rc<Texture<Flat, Dim2, RGB32F>>,
+    pub tex: Rc<(Texture<Flat, Dim2, RGB32F>, OutputInfo)>,
     
     /// The translation that should
     /// be applied to the model.
@@ -31,12 +32,12 @@ pub struct Model<V> {
 
 impl<V: vertex::Vertex> Model<V> {
     /// Create a new model. The model will be centered at the origin.
-    pub fn new(tess: Tess<V>, tex: Rc<Texture<Flat, Dim2, RGB32F>>) -> Model<V> {
+    pub fn new(tess: Tess<V>, tex: Rc<(Texture<Flat, Dim2, RGB32F>, OutputInfo)>) -> Model<V> {
         Self::with_translation(tess, tex, Translation::new(0., 0., 0.))
     }
     
     /// Create a new model with the supplied translation.
-    pub fn with_translation(tess: Tess<V>, tex: Rc<Texture<Flat, Dim2, RGB32F>>,
+    pub fn with_translation(tess: Tess<V>, tex: Rc<(Texture<Flat, Dim2, RGB32F>, OutputInfo)>,
                             translation: Translation) -> Model<V> {
         Model {
             tess,

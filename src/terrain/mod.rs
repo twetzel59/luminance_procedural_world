@@ -1,18 +1,22 @@
 //! Module related to managing and drawing terrain.
 
+pub mod mesh_gen;
+pub mod voxel;
+
+use std::collections::HashMap;
 use luminance::framebuffer::Framebuffer;
 use luminance::linear::M44;
 use luminance::pipeline::{entry, pipeline, RenderState};
-use luminance::tess::{Mode, Tess, TessVertices};
 use luminance::texture::{Dim2, Flat};
 use luminance::shader::program::{Program, ProgramError, Uniform, UniformBuilder,
                                  UniformInterface, UniformWarning};
 use luminance_glfw::{Device, GLFWDevice};
 use camera::Camera;
-use maths::{ToMatrix, Translation};
-use model::{Drawable, Model};
+use maths::ToMatrix;
+use model::Drawable;
 use resources::Resources;
 use shader;
+use self::voxel::Sector;
 
 // Type of terrain position vertex attribute.
 type Position = [f32; 3];
@@ -23,16 +27,10 @@ type UV = [f32; 2];
 // A terrain vertex.
 type Vertex = (Position, UV);
 
-const VERTICES: [Vertex; 3] = [
-  ([-0.5, -0.5, 0.0], [0.0, 1.0]),
-  ([-0.5,  0.5, 0.0], [0.0, 0.0]),
-  ([ 0.5, -0.5, 0.0], [1.0, 1.0]),
-];
-
 /// Drawable manager for world terrain. Handles the rendering
 /// of each sector (**not yet implemented**).
 pub struct Terrain {
-    model: Model<Vertex>,
+    sectors: HashMap<(i32, i32, i32), Sector>,
     shader: Program<Vertex, (), Uniforms>,
 }
 
@@ -46,14 +44,13 @@ impl Terrain {
             eprintln!("{:?}", warn);
         }
         
-        let tess = Tess::new(Mode::Triangle, TessVertices::Fill(&VERTICES), None);
-        
-        let model = Model::with_translation(tess,
-                                            resources.terrain_tex(),
-                                            Translation::new(1., 0., -1.));
+        let mut sectors = HashMap::new();
+        sectors.insert((0, 0, 0), Sector::new(resources, (0, 0, 0)));
+        sectors.insert((1, 0, 0), Sector::new(resources, (1, 0, 0)));
+        sectors.insert((0, 0, 1), Sector::new(resources, (0, 0, 1)));
         
         Terrain {
-            model,
+            sectors,
             shader,
         }
     }
@@ -77,21 +74,25 @@ impl Drawable for Terrain {
             //shader: &Program<Self::Vertex, (), Self::Uniform>,
             camera: &Camera) {
         device.draw(|| {
-            entry(|gpu| {
-                gpu.bind_texture(&*self.model.tex);
+            entry(|gpu| {                    
+                // TODO: Only bind the texture once, and ensure
+                // that the correct one is used.
                 pipeline(render_target, [0., 0., 0., 1.], |shade_gate| {
-                    shade_gate.shade(&self.shader, |render_gate, uniforms| {
-                        uniforms.model_matrix.update(self.model.to_matrix());
-                        uniforms.view_matrix.update(camera.to_matrix());
-                        uniforms.projection_matrix.update(*camera.projection_matrix());
-                        //uniforms.terrain_tex.update(bound);
-                        
-                        let render_state = RenderState::default()
-                                           .set_face_culling(None);
-                        render_gate.render(render_state, |tess_gate| {
-                            tess_gate.render((&self.model.tess).into());
+                    for i in self.sectors.values() {
+                        gpu.bind_texture(&i.model().tex.0);
+                        shade_gate.shade(&self.shader, |render_gate, uniforms| {
+                            uniforms.model_matrix.update(i.model().to_matrix());
+                            uniforms.view_matrix.update(camera.to_matrix());
+                            uniforms.projection_matrix.update(*camera.projection_matrix());
+                            //uniforms.terrain_tex.update(bound);
+                            
+                            let render_state = RenderState::default();
+                                               //.set_face_culling(None);
+                            render_gate.render(render_state, |tess_gate| {
+                                tess_gate.render((&i.model().tess).into());
+                            });
                         });
-                    });
+                    }
                 });
             });
         });
