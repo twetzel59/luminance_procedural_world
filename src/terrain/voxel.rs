@@ -2,7 +2,7 @@
 
 use std::{iter, slice};
 use luminance::tess::{Mode, Tess, TessVertices};
-use super::{Vertex, mesh_gen};
+use super::{mesh_gen, Vertex, SECTOR_SIZE};
 use maths::Translation;
 use model::Model;
 use resources::Resources;
@@ -30,9 +30,6 @@ impl Block {
         }
     }
 }
-
-/// The length of one side of a cubic sector.
-pub const SECTOR_SIZE: usize = 32;
 
 // The length of an array of blocks for a sector.
 const SECTOR_LEN: usize = SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE;
@@ -130,6 +127,14 @@ impl SectorSpaceCoords {
 pub struct BlockList([Block; SECTOR_LEN]);
 
 impl BlockList {
+    /// Create a new `BlockList`, consuming the array
+    /// of `Block`s.
+    pub fn new(blocks: [Block; SECTOR_LEN]) -> BlockList {
+        BlockList(blocks)
+    }
+}
+
+impl BlockList {
     /// Look at the block at a specific position in sector coords.
     pub fn get(&self, pos: SectorSpaceCoords) -> &Block {
         let (x, y, z) = (pos.x() as usize, pos.y() as usize, pos.z() as usize);
@@ -188,17 +193,17 @@ pub struct Sector {
 
 impl Sector {
     /// Create a sector filled with `Granite`.
-    pub fn new(resources: &Resources, pos: (u32, u32, u32)) -> Sector {
-        let blocks = BlockList([Block::Loam; SECTOR_LEN]);
+    pub fn new(resources: &Resources, pos: (i32, i32, i32), blocks: BlockList) -> Sector {
+        //let blocks = BlockList([Block::Loam; SECTOR_LEN]);
         
         let terrain_tex = resources.terrain_tex();
         
         let vertices = mesh_gen::generate_block_vertices(&blocks, &terrain_tex.1);
         let tess = Tess::new(Mode::Triangle, TessVertices::Fill(&vertices), None);
         
-        let translation = Translation::new((pos.0 as usize * SECTOR_SIZE) as f32,
-                                           (pos.1 as usize * SECTOR_SIZE) as f32,
-                                           (pos.2 as usize * SECTOR_SIZE) as f32);
+        let translation = Translation::new((pos.0 * SECTOR_SIZE as i32) as f32,
+                                           (pos.1 * SECTOR_SIZE as i32) as f32,
+                                           (pos.2 * SECTOR_SIZE as i32) as f32);
                                            
         //println!("translation: {:?}", translation);
         

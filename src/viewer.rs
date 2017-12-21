@@ -19,7 +19,6 @@ const SENSITIVITY: f32 = 0.02;
 pub struct Viewer {
     device: GLFWDevice,
     render_target: Framebuffer<Flat, Dim2, (), ()>,
-    resources: Resources,
     camera: Camera,
 }
 
@@ -31,7 +30,6 @@ impl Viewer {
         Viewer {
             device,
             render_target: Framebuffer::default([SCREEN_SIZE.0, SCREEN_SIZE.1]),
-            resources: Resources::new(),
             camera: Camera::new(SCREEN_SIZE),
         }.start();
     }
@@ -42,10 +40,12 @@ impl Viewer {
                         WindowOpt::default())
     }
     
-    fn start(mut self) {        
+    fn start(mut self) {
+        let resources = Resources::new();
+        
         self.device.lib_handle_mut().set_cursor_mode(CursorMode::Disabled);
         
-        let terrain = Terrain::new(&self.resources);
+        let mut terrain = Terrain::new(&resources);
         
         /*
         let test1 = mat4! [
@@ -75,6 +75,8 @@ impl Viewer {
                 break;
             }
             self.handle_realtime_input(delta);
+            
+            terrain.update(&self.camera);
             
             terrain.draw(&mut self.device, &self.render_target, &self.camera);
             

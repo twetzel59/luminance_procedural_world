@@ -46,7 +46,7 @@ pub trait ToMatrix {
 }
 
 /// Stores a translation.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Translation {
     pub x: f32,
     pub y: f32,
@@ -84,7 +84,7 @@ impl ToMatrix for Translation {
 
 /// Stores a rotation. Only rotations about the X and Y axis
 /// are preformed.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Rotation {
     pub x: f32,
     pub y: f32,
@@ -131,7 +131,7 @@ impl ToMatrix for Rotation {
 }
 
 /// Stores a 3D projection.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Projection {
     pub fov: f32,
     pub aspect: f32,

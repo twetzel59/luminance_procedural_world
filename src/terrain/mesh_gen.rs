@@ -2,7 +2,7 @@
 //! from `Sector`.
 
 use png::OutputInfo;
-use super::{Position, UV, Vertex};
+use super::{Position, UV, Vertex, SECTOR_SIZE};
 use super::voxel::{Block, BlockList, SectorSpaceCoords};
 
 /*
@@ -51,7 +51,7 @@ enum Face {
 pub fn generate_block_vertices(blocks: &BlockList, texture_info: &OutputInfo) -> Vec<Vertex> {
     use self::Face::*;
     
-    let mut v = Vec::new();
+    let mut v = Vec::with_capacity(SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE * 24);
     
     for i in blocks {
         if !i.1.is_air() {
@@ -83,7 +83,7 @@ pub fn generate_block_vertices(blocks: &BlockList, texture_info: &OutputInfo) ->
     
     //generate_face(&mut v);
     
-    println!("done!");
+    //println!("done!");
     
     v
 }
