@@ -18,7 +18,7 @@ impl Camera {
     pub fn new(window_size: (u32, u32)) -> Camera {
         let projection = Projection::new(40. * (PI / 180.),
                                          window_size.0 as f32 / window_size.1 as f32,
-                                         0.1, 100.0);
+                                         0.1, 1000.0);
         let projection_matrix = projection.to_matrix();
         
         Camera {

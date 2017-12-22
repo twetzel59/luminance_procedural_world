@@ -162,7 +162,17 @@ dependencies = [
  "glfw 0.16.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "luminance 0.24.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "luminance-glfw 0.4.1 (git+https://github.com/twetzel59/luminance-glfw.git)",
+ "noise 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "png 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "noise"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "num-traits 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.3.18 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -300,6 +310,7 @@ dependencies = [
 "checksum luminance 0.24.0 (registry+https://github.com/rust-lang/crates.io-index)" = "22b8d759844329e02790bef7b0da1190beb1564e831d8db9144c085be5b9c507"
 "checksum luminance-glfw 0.4.1 (git+https://github.com/twetzel59/luminance-glfw.git)" = "<none>"
 "checksum luminance-windowing 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "7ff18f81ae6b1679919733c5469ea8b9fe406552498b6452e529b99b4972aa9e"
+"checksum noise 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "77152bd10ae7b1dd2968c5dc7e4f4341ebe306bf8f48990c52fe1ae39a1d0033"
 "checksum nom 1.2.4 (registry+https://github.com/rust-lang/crates.io-index)" = "a5b8c256fd9471521bcb84c3cdba98921497f1a331cbc15b8030fc63b82050ce"
 "checksum num 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)" = "a311b77ebdc5dd4cf6449d81e4135d9f0e3b153839ac90e648a8ef538f923525"
 "checksum num-bigint 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)" = "8fd0f8dbb4c0960998958a796281d88c16fbe68d87b1baa6f31e2979e81fd0bd"
