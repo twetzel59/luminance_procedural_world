@@ -19,6 +19,7 @@ pub enum Block {
     Air,
     Limestone,
     Loam,
+    Grass,
 }
 
 impl Block {

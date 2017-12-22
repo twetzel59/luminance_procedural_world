@@ -1,13 +1,15 @@
 //! Module related to managing and drawing terrain.
 
-pub mod mesh_gen;
-pub mod voxel;
+mod mesh_gen;
+mod voxel;
+mod world_gen;
 
 use std::collections::HashMap;
 use std::mem;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
+use std::time::{Duration, Instant};
 use luminance::framebuffer::Framebuffer;
 use luminance::linear::M44;
 use luminance::pipeline::{entry, pipeline, RenderState};
@@ -21,6 +23,7 @@ use model::Drawable;
 use resources::Resources;
 use shader;
 use self::voxel::{Block, BlockList, Sector};
+use self::world_gen::WorldGen;
 
 // Type of terrain position vertex attribute.
 type Position = [f32; 3];
@@ -32,7 +35,9 @@ type UV = [f32; 2];
 type Vertex = (Position, UV);
 
 /// The length of one side of a cubic sector.
-pub const SECTOR_SIZE: usize = 32;
+pub const SECTOR_SIZE: usize = 16;
+
+const CLEAR_COLOR: [f32; 4] = [0.2, 0.75, 0.8, 1.0];
 
 /// Drawable manager for world terrain. Handles the rendering
 /// of each sector.
@@ -70,10 +75,10 @@ impl<'a> Terrain<'a> {
         //    }
         //}
         
-        sectors.insert((0, 0, 0), Sector::new(resources, (0, 0, 0), BlockList::new([Block::Loam; SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE])));
-        sectors.insert((1, 0, 0), Sector::new(resources, (1, 0, 0), BlockList::new([Block::Loam; SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE])));
-        sectors.insert((0, 0, 1), Sector::new(resources, (0, 0, 1), BlockList::new([Block::Loam; SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE])));
-        sectors.insert((1, 0, 1), Sector::new(resources, (1, 0, 1), BlockList::new([Block::Loam; SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE])));
+        //sectors.insert((0, 0, 0), Sector::new(resources, (0, 0, 0), BlockList::new([Block::Loam; SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE])));
+        //sectors.insert((1, 0, 0), Sector::new(resources, (1, 0, 0), BlockList::new([Block::Loam; SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE])));
+        //sectors.insert((0, 0, 1), Sector::new(resources, (0, 0, 1), BlockList::new([Block::Loam; SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE])));
+        //sectors.insert((1, 0, 1), Sector::new(resources, (1, 0, 1), BlockList::new([Block::Loam; SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE])));
         
         let (nearby_tx, nearby_rx) = mpsc::channel();
         let (needed_tx, needed_rx) = mpsc::channel();
@@ -94,6 +99,7 @@ impl<'a> Terrain<'a> {
     pub fn update(&mut self, camera: &Camera) {
         self.shared_info.lock().unwrap().player_pos = camera.translation().clone();
         
+        let begin = Instant::now();
         while let Ok(nearby) = self.nearby_rx.try_recv() {
             match nearby {
                 Nearby::Query(sector_coords) => {
@@ -108,7 +114,18 @@ impl<'a> Terrain<'a> {
                 },
             }
             //println!("nearby: {:?}", sector);
+            
+            let duration = Instant::now() - begin;
+            
+            let seconds = duration.as_secs() as f64 +
+                          duration.subsec_nanos() as f64 * 1e-9;
+            
+            if seconds > 0.005 {
+                //println!("too long: {}", seconds);
+                break;
+            }
         }
+        //println!("time: {:?}", Instant::now() - begin);
     }
     
     fn load_shaders() ->
@@ -133,7 +150,7 @@ impl<'a> Drawable for Terrain<'a> {
             entry(|gpu| {                    
                 // TODO: Only bind the texture once, and ensure
                 // that the correct one is used.
-                pipeline(render_target, [0., 0., 0., 1.], |shade_gate| {
+                pipeline(render_target, CLEAR_COLOR, |shade_gate| {
                     for i in self.sectors.values() {
                         gpu.bind_texture(&i.model().tex.0);
                         shade_gate.shade(&self.shader, |render_gate, uniforms| {
@@ -211,10 +228,13 @@ enum Nearby {
     Done((i32, i32, i32), BlockList),
 }
 
+const VISIT_ORDER: [i32; 9] = [0, -1, 1, -2, 2, 3, -3, 4, -4];
+
 struct TerrainGenThread {
     shared_info: SharedInfo,
     nearby_tx: Sender<Nearby>,
     needed_rx: Receiver<(i32, i32, i32)>,
+    gen: WorldGen,
 }
 
 impl TerrainGenThread {
@@ -225,6 +245,7 @@ impl TerrainGenThread {
             shared_info,
             nearby_tx,
             needed_rx,
+            gen: WorldGen::new(),
         }
     }
     
@@ -238,8 +259,18 @@ impl TerrainGenThread {
                 
                 let sector = sector_at(&player_pos);
                 
-                if self.nearby_tx.send(Nearby::Query(sector)).is_err() {
-                    return;
+                for dx in &VISIT_ORDER {
+                    for dy in -1..2 {
+                        for dz in &VISIT_ORDER {
+                            let sector = (sector.0 + dx,
+                                          sector.1 + dy,
+                                          sector.2 + dz);
+                            
+                            if self.nearby_tx.send(Nearby::Query(sector)).is_err() {
+                                return;
+                            }
+                        }
+                    }
                 }
                 
                 //
@@ -247,16 +278,14 @@ impl TerrainGenThread {
                 while let Ok(needed) = self.needed_rx.try_recv() {
                     //println!("will generate: {:?}", needed);
                     
-                    let list = BlockList::new(
-                            [Block::Limestone;
-                            SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE]);
+                    let list = self.gen.generate(needed);
                     
                     if self.nearby_tx.send(Nearby::Done(needed, list)).is_err() {
                         return
                     }
                 }
                 
-                thread::sleep(::std::time::Duration::from_secs(1));
+                thread::sleep(Duration::from_millis(1500));
             }
         });
     }

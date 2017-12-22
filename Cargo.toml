@@ -9,4 +9,5 @@ git = "https://github.com/twetzel59/luminance-glfw.git"
 [dependencies]
 glfw = "0.16"
 luminance = "0.24.0"
+noise = "0.4.1"
 png = "0.11.0"

@@ -84,6 +84,8 @@ impl Viewer {
             delta = delta_dur.as_secs() as f32
                     + delta_dur.subsec_nanos() as f32 * 1e-9;
             //println!("delta: {:?}", delta);
+            
+            //::std::thread::sleep(::std::time::Duration::from_millis(10));
         }
     }
     
