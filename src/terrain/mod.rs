@@ -166,19 +166,21 @@ impl<'a> Drawable for Terrain<'a> {
                 // that the correct one is used.
                 pipeline(render_target, CLEAR_COLOR, |shade_gate| {
                     for i in self.sectors.values() {
-                        gpu.bind_texture(&i.model().tex.0);
-                        shade_gate.shade(&self.shader, |render_gate, uniforms| {
-                            uniforms.model_matrix.update(i.model().to_matrix());
-                            uniforms.view_matrix.update(camera.to_matrix());
-                            uniforms.projection_matrix.update(*camera.projection_matrix());
-                            //uniforms.terrain_tex.update(bound);
-                            
-                            let render_state = RenderState::default();
-                                               //.set_face_culling(None);
-                            render_gate.render(render_state, |tess_gate| {
-                                tess_gate.render((&i.model().tess).into());
+                        if let Some(model) = i.model() {
+                            gpu.bind_texture(&model.tex.0);
+                            shade_gate.shade(&self.shader, |render_gate, uniforms| {
+                                uniforms.model_matrix.update(model.to_matrix());
+                                uniforms.view_matrix.update(camera.to_matrix());
+                                uniforms.projection_matrix.update(*camera.projection_matrix());
+                                //uniforms.terrain_tex.update(bound);
+                                
+                                let render_state = RenderState::default();
+                                                   //.set_face_culling(None);
+                                render_gate.render(render_state, |tess_gate| {
+                                    tess_gate.render((&model.tess).into());
+                                });
                             });
-                        });
+                        }
                     }
                 });
             });

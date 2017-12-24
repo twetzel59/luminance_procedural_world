@@ -30,6 +30,11 @@ impl Block {
             _ => false,
         }
     }
+    
+    /// Determine if the block must be drawn.
+    pub fn needs_rendering(&self) -> bool {
+        !self.is_air()
+    }
 }
 
 // The length of an array of blocks for a sector.
@@ -142,6 +147,17 @@ impl BlockList {
         
         &self.0[x + y * SECTOR_SIZE + z * SECTOR_SIZE * SECTOR_SIZE]
     }
+    
+    /// Determine if all blocks in the `BlockList` are air.
+    pub fn needs_rendering(&self) -> bool {
+        for i in self.0.iter() {
+            if i.needs_rendering() {
+                return true;
+            }
+        }
+        
+        false
+    }
 }
 
 /// An iterator over a BlockList.
@@ -189,7 +205,7 @@ impl<'a> IntoIterator for &'a BlockList {
 /// An individual "chunk" of the world.
 pub struct Sector {
     blocks: BlockList,
-    model: Model<Vertex>,
+    model: Option<Model<Vertex>>,
 }
 
 impl Sector {
@@ -197,27 +213,35 @@ impl Sector {
     pub fn new(resources: &Resources, pos: (i32, i32, i32), blocks: BlockList) -> Sector {
         //let blocks = BlockList([Block::Loam; SECTOR_LEN]);
         
-        let terrain_tex = resources.terrain_tex();
-        
-        let vertices = mesh_gen::generate_block_vertices(&blocks, &terrain_tex.1);
-        let tess = Tess::new(Mode::Triangle, TessVertices::Fill(&vertices), None);
-        
-        let translation = Translation::new((pos.0 * SECTOR_SIZE as i32) as f32,
-                                           (pos.1 * SECTOR_SIZE as i32) as f32,
-                                           (pos.2 * SECTOR_SIZE as i32) as f32);
-                                           
-        //println!("translation: {:?}", translation);
-        
-        let model = Model::with_translation(tess, terrain_tex, translation);
-        
-        Sector {
-            blocks,
-            model,
+        if blocks.needs_rendering() {
+            let terrain_tex = resources.terrain_tex();
+            
+            let vertices = mesh_gen::generate_block_vertices(&blocks, &terrain_tex.1);
+            let tess = Tess::new(Mode::Triangle, TessVertices::Fill(&vertices), None);
+            
+            let translation = Translation::new((pos.0 * SECTOR_SIZE as i32) as f32,
+                                               (pos.1 * SECTOR_SIZE as i32) as f32,
+                                               (pos.2 * SECTOR_SIZE as i32) as f32);
+                                               
+            //println!("translation: {:?}", translation);
+            
+            let model = Some(Model::with_translation(tess, terrain_tex, translation));
+            
+            Sector {
+                blocks,
+                model,
+            }
+        } else {
+            Sector {
+                blocks,
+                model: None,
+            }
         }
     }
     
     /// Return an immutable reference to this sector's `Model`.
-    pub fn model(&self) -> &Model<Vertex> {
-        &self.model
+    /// The model may not exist, in which case `None` is returned.
+    pub fn model(&self) -> Option<&Model<Vertex>> {
+        self.model.as_ref()
     }
 }
