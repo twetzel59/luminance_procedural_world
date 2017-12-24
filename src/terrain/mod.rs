@@ -97,7 +97,8 @@ impl<'a> Terrain<'a> {
     /// Perform a frame update.
     /// May block for some time until a mutex can be aquired.
     pub fn update(&mut self, camera: &Camera) {
-        self.shared_info.lock().unwrap().player_pos = camera.translation().clone();
+        let translation = camera.translation().clone();
+        self.shared_info.lock().unwrap().player_pos = translation.clone();
         
         let begin = Instant::now();
         while let Ok(nearby) = self.nearby_rx.try_recv() {
@@ -126,6 +127,19 @@ impl<'a> Terrain<'a> {
             }
         }
         //println!("time: {:?}", Instant::now() - begin);
+        
+        let sector = sector_at(&translation);
+        self.sectors.retain(|&k, _| {
+            let dx = k.0 as f32 - sector.0 as f32;
+            let dy = k.1 as f32 - sector.1 as f32;
+            let dz = k.2 as f32 - sector.2 as f32;
+            
+            let dist_sq = dx * dx + dy * dy + dz * dz;
+            
+            //println!("{}", dist_sq);
+            
+            dist_sq < 280.
+        });
     }
     
     fn load_shaders() ->
@@ -228,7 +242,7 @@ enum Nearby {
     Done((i32, i32, i32), BlockList),
 }
 
-const VISIT_ORDER: [i32; 9] = [0, -1, 1, -2, 2, 3, -3, 4, -4];
+const CREATE_ORDER: [i32; 9] = [0, -1, 1, -2, 2, 3, -3, 4, -4];
 
 struct TerrainGenThread {
     shared_info: SharedInfo,
@@ -259,9 +273,9 @@ impl TerrainGenThread {
                 
                 let sector = sector_at(&player_pos);
                 
-                for dx in &VISIT_ORDER {
+                for dx in &CREATE_ORDER {
                     for dy in -1..2 {
-                        for dz in &VISIT_ORDER {
+                        for dz in &CREATE_ORDER {
                             let sector = (sector.0 + dx,
                                           sector.1 + dy,
                                           sector.2 + dz);
@@ -285,7 +299,7 @@ impl TerrainGenThread {
                     }
                 }
                 
-                thread::sleep(Duration::from_millis(1500));
+                thread::sleep(Duration::from_secs(1));
             }
         });
     }

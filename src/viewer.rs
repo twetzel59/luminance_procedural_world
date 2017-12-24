@@ -12,8 +12,8 @@ use resources::Resources;
 use terrain::Terrain;
 
 const SCREEN_SIZE: (u32, u32) = (800, 800);
-const SPEED: f32 = 10.;
-const SENSITIVITY: f32 = 0.02;
+const SPEED: f32 = 20.;
+const SENSITIVITY: f32 = 0.1;
 
 /// The core of the app, manages the program.
 pub struct Viewer {
@@ -175,8 +175,8 @@ impl Viewer {
         //println!("mouse pos: {:?}", self.device.lib_handle().get_cursor_pos());
         let mouse_pos = self.device.lib_handle().get_cursor_pos();
         let mouse_pos = (mouse_pos.0 as f32, mouse_pos.1 as f32);
-        self.camera.rotation_mut().spin(SPEED * delta * -mouse_pos.1 * SENSITIVITY,
-                                   SPEED * delta * -mouse_pos.0 * SENSITIVITY);
+        self.camera.rotation_mut().spin(delta * -mouse_pos.1 * SENSITIVITY,
+                                        delta * -mouse_pos.0 * SENSITIVITY);
         self.device.lib_handle_mut().set_cursor_pos(0., 0.);
     }
 }
