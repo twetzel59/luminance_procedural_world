@@ -22,7 +22,7 @@ use maths::{ToMatrix, Translation};
 use model::Drawable;
 use resources::Resources;
 use shader;
-use self::voxel::{Block, BlockList, Sector};
+use self::voxel::{AdjacentSectors, Block, BlockList, Sector};
 use self::world_gen::WorldGen;
 
 // Type of terrain position vertex attribute.
@@ -109,9 +109,27 @@ impl<'a> Terrain<'a> {
                     }
                 },
                 Nearby::Done(sector_coords, block_list) => {
-                    self.sectors.insert(
-                        sector_coords,
-                        Sector::new(self.resources, sector_coords, block_list));
+                    let back   = (sector_coords.0,     sector_coords.1,     sector_coords.2 - 1);
+                    let front  = (sector_coords.0,     sector_coords.1,     sector_coords.2 + 1);
+                    let top    = (sector_coords.0,     sector_coords.1 + 1, sector_coords.2    );
+                    let bottom = (sector_coords.0,     sector_coords.1 - 1, sector_coords.2    );
+                    let left   = (sector_coords.0 - 1, sector_coords.1,     sector_coords.2    );
+                    let right  = (sector_coords.0 + 1, sector_coords.1,     sector_coords.2    );
+                    
+                    let new_sector;
+                    {
+                        let adjacent = AdjacentSectors::new(self.sectors.get(&back),
+                                                            self.sectors.get(&front),
+                                                            self.sectors.get(&top),
+                                                            self.sectors.get(&bottom),
+                                                            self.sectors.get(&left),
+                                                            self.sectors.get(&right));
+                        
+                        new_sector = Sector::new(self.resources, sector_coords,
+                                                 block_list, &adjacent);
+                    }
+                    
+                    self.sectors.insert(sector_coords, new_sector);
                 },
             }
             //println!("nearby: {:?}", sector);

@@ -17,6 +17,12 @@ impl WorldGen {
         }
     }
     
+    /*
+    pub fn generate(&self, sector: (i32, i32, i32)) -> BlockList {
+        
+    }
+    */
+    
     pub fn generate(&self, sector: (i32, i32, i32)) -> BlockList {
         /*
         if sector.1 > 0 {
