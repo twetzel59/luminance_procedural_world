@@ -279,4 +279,20 @@ impl Sector {
     pub fn blocks(&self) -> &BlockList {
         &self.blocks
     }
+    
+    /*
+    /// Update the `Tess` for the `Sector`.
+    pub fn update(&mut self, resources: &Resources, adjacent: &AdjacentSectors) {
+        if let Some(ref mut model) = self.model {
+            /// TODO: What about the texture? Is it good to get it from
+            /// the current model.
+            let terrain_tex = resources.terrain_tex();
+            
+            let vertices = mesh_gen::generate_block_vertices(&self.blocks, adjacent, &terrain_tex.1);
+            let tess = Tess::new(Mode::Triangle, TessVertices::Fill(&vertices), None);
+            
+            model.tess = tess;
+        }
+    }
+    */
 }
