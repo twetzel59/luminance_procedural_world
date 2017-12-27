@@ -108,28 +108,64 @@ impl<'a> Terrain<'a> {
                         self.needed_tx.send(sector_coords).unwrap();
                     }
                 },
-                Nearby::Done(sector_coords, block_list) => {
-                    let back   = (sector_coords.0,     sector_coords.1,     sector_coords.2 - 1);
-                    let front  = (sector_coords.0,     sector_coords.1,     sector_coords.2 + 1);
-                    let top    = (sector_coords.0,     sector_coords.1 + 1, sector_coords.2    );
-                    let bottom = (sector_coords.0,     sector_coords.1 - 1, sector_coords.2    );
-                    let left   = (sector_coords.0 - 1, sector_coords.1,     sector_coords.2    );
-                    let right  = (sector_coords.0 + 1, sector_coords.1,     sector_coords.2    );
+                Nearby::Generated(sector_coords, block_list) => {
+                    self.sectors.insert(sector_coords, Sector::new(block_list));
+                },
+                Nearby::PleaseRender(sector_coords) => {
+                    let mut model = None;
                     
-                    let new_sector;
-                    {
-                        let adjacent = AdjacentSectors::new(self.sectors.get(&back),
-                                                            self.sectors.get(&front),
-                                                            self.sectors.get(&top),
-                                                            self.sectors.get(&bottom),
-                                                            self.sectors.get(&left),
-                                                            self.sectors.get(&right));
+                    if let Some(sector) = self.sectors.get(&sector_coords) {
+                        if sector.model().is_some() {
+                            break;
+                        }
                         
-                        new_sector = Sector::new(self.resources, sector_coords,
-                                                 block_list, &adjacent);
+                        let back   = (sector_coords.0,     sector_coords.1,     sector_coords.2 - 1);
+                        let front  = (sector_coords.0,     sector_coords.1,     sector_coords.2 + 1);
+                        let top    = (sector_coords.0,     sector_coords.1 + 1, sector_coords.2    );
+                        let bottom = (sector_coords.0,     sector_coords.1 - 1, sector_coords.2    );
+                        let left   = (sector_coords.0 - 1, sector_coords.1,     sector_coords.2    );
+                        let right  = (sector_coords.0 + 1, sector_coords.1,     sector_coords.2    );
+                        
+                        let back = self.sectors.get(&back);
+                        if back.is_none() {
+                            break;
+                        }
+                        
+                        let front = self.sectors.get(&front);
+                        if front.is_none() {
+                            break;
+                        }
+                        
+                        let top = self.sectors.get(&top);
+                        if top.is_none() {
+                            break;
+                        }
+                        
+                        let bottom = self.sectors.get(&bottom);
+                        if bottom.is_none() {
+                            break;
+                        }
+                        
+                        let left = self.sectors.get(&left);
+                        if left.is_none() {
+                            break;
+                        }
+                        
+                        let right = self.sectors.get(&right);
+                        if right.is_none() {
+                            break;
+                        }
+                        
+                        let adjacent = AdjacentSectors::new(back, front,
+                                                            top, bottom,
+                                                            left, right);
+                            
+                        model = Some(sector.create_model(self.resources, sector_coords, &adjacent));
                     }
                     
-                    self.sectors.insert(sector_coords, new_sector);
+                    if let Some(m) = model {
+                        self.sectors.get_mut(&sector_coords).unwrap().set_model(m);
+                    }
                 },
             }
             //println!("nearby: {:?}", sector);
@@ -259,10 +295,12 @@ impl Default for WorldGenThreadInfo {
 // Type for the 'nearby sector' channel.
 enum Nearby {
     Query((i32, i32, i32)),
-    Done((i32, i32, i32), BlockList),
+    Generated((i32, i32, i32), BlockList),
+    PleaseRender((i32, i32, i32)),
 }
 
-const CREATE_ORDER: [i32; 9] = [0, -1, 1, -2, 2, 3, -3, 4, -4];
+const GENERATE_ORDER: [i32; 9] = [0, -1, 1, -2, 2, 3, -3, 4, -4];
+const RENDER_DIST_AXIS: i32 = 4;
 
 struct TerrainGenThread {
     shared_info: SharedInfo,
@@ -293,15 +331,23 @@ impl TerrainGenThread {
                 
                 let sector = sector_at(&player_pos);
                 
-                for dx in &CREATE_ORDER {
-                    for dy in -1..2 {
-                        for dz in &CREATE_ORDER {
+                for dx in &GENERATE_ORDER {
+                    for dy in -2..3 {
+                        for dz in &GENERATE_ORDER {
                             let sector = (sector.0 + dx,
                                           sector.1 + dy,
                                           sector.2 + dz);
                             
                             if self.nearby_tx.send(Nearby::Query(sector)).is_err() {
                                 return;
+                            }
+                            
+                            if dx.abs() <= RENDER_DIST_AXIS && dz.abs() <= RENDER_DIST_AXIS {
+                                if self.nearby_tx.send(Nearby::PleaseRender(sector)).is_err() {
+                                    return;
+                                }
+                            } else {
+                                println!("won't render {:?}", sector);
                             }
                         }
                     }
@@ -314,8 +360,8 @@ impl TerrainGenThread {
                     
                     let list = self.gen.generate(needed);
                     
-                    if self.nearby_tx.send(Nearby::Done(needed, list)).is_err() {
-                        return
+                    if self.nearby_tx.send(Nearby::Generated(needed, list)).is_err() {
+                        return;
                     }
                 }
                 

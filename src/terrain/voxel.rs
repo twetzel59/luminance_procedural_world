@@ -238,34 +238,13 @@ pub struct Sector {
 }
 
 impl Sector {
-    /// Create a sector filled with `Granite`.
-    pub fn new(resources: &Resources, pos: (i32, i32, i32),
-               blocks: BlockList, adjacent: &AdjacentSectors) -> Sector {
-        //let blocks = BlockList([Block::Loam; SECTOR_LEN]);
-        
-        if blocks.needs_rendering() {
-            let terrain_tex = resources.terrain_tex();
-            
-            let vertices = mesh_gen::generate_block_vertices(&blocks, adjacent, &terrain_tex.1);
-            let tess = Tess::new(Mode::Triangle, TessVertices::Fill(&vertices), None);
-            
-            let translation = Translation::new((pos.0 * SECTOR_SIZE as i32) as f32,
-                                               (pos.1 * SECTOR_SIZE as i32) as f32,
-                                               (pos.2 * SECTOR_SIZE as i32) as f32);
-                                               
-            //println!("translation: {:?}", translation);
-            
-            let model = Some(Model::with_translation(tess, terrain_tex, translation));
-            
-            Sector {
-                blocks,
-                model,
-            }
-        } else {
-            Sector {
-                blocks,
-                model: None,
-            }
+    /// Create a sector.
+    pub fn new(blocks: BlockList) -> Sector {
+            //let blocks = BlockList([Block::Loam; SECTOR_LEN]);
+
+        Sector {
+            blocks,
+            model: None,
         }
     }
     
@@ -275,24 +254,34 @@ impl Sector {
         self.model.as_ref()
     }
     
+    /// Set the `Sector`'s `Model`.
+    pub fn set_model(&mut self, model: Option<Model<Vertex>>) {
+        self.model = model;
+    }
+    
     /// Return this sector's `BlockList`.
     pub fn blocks(&self) -> &BlockList {
         &self.blocks
     }
     
-    /*
-    /// Update the `Tess` for the `Sector`.
-    pub fn update(&mut self, resources: &Resources, adjacent: &AdjacentSectors) {
-        if let Some(ref mut model) = self.model {
-            /// TODO: What about the texture? Is it good to get it from
-            /// the current model.
+    /// Create the `Model` for the `Sector`.
+    pub fn create_model(&self, resources: &Resources, pos: (i32, i32, i32),
+                  adjacent: &AdjacentSectors) -> Option<Model<Vertex>> {
+        if self.blocks.needs_rendering() {
             let terrain_tex = resources.terrain_tex();
             
             let vertices = mesh_gen::generate_block_vertices(&self.blocks, adjacent, &terrain_tex.1);
             let tess = Tess::new(Mode::Triangle, TessVertices::Fill(&vertices), None);
             
-            model.tess = tess;
+            let translation = Translation::new((pos.0 * SECTOR_SIZE as i32) as f32,
+                                               (pos.1 * SECTOR_SIZE as i32) as f32,
+                                               (pos.2 * SECTOR_SIZE as i32) as f32);
+                                           
+            //println!("translation: {:?}", translation);
+            
+            Some(Model::with_translation(tess, terrain_tex, translation))
+        } else {
+            None
         }
     }
-    */
 }

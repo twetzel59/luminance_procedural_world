@@ -121,6 +121,7 @@ fn should_create_face(face: Face, coord: SectorSpaceCoords,
         */
         //Back => (blocks, coord.back()),
         
+        /*
         Back =>
             coord.back().map_or_else(|| {
                 adjacent.back.map_or_else(|| (blocks, None), |back| {
@@ -157,6 +158,14 @@ fn should_create_face(face: Face, coord: SectorSpaceCoords,
                     (right.blocks(), Some(SectorSpaceCoords::new(0, coord.y(), coord.z())))
                 })
             }, |c| (blocks, Some(c))),
+        */
+        
+        Back => (blocks, coord.back()),
+        Front => (blocks, coord.front()),
+        Top => (blocks, coord.top()),
+        Bottom => (blocks, coord.bottom()),
+        Left => (blocks, coord.left()),
+        Right => (blocks, coord.right()),
     };
     
     other_coord.map_or(true, |c| !block_list.get(c).needs_rendering())
