@@ -204,22 +204,22 @@ impl<'a> IntoIterator for &'a BlockList {
 
 /// Holds references to all adjacent sectors.
 pub struct AdjacentSectors<'a> {
-    pub back: Option<&'a Sector>,
-    pub front: Option<&'a Sector>,
-    pub top: Option<&'a Sector>,
-    pub bottom: Option<&'a Sector>,
-    pub left: Option<&'a Sector>,
-    pub right: Option<&'a Sector>,
+    pub back: &'a Sector,
+    pub front: &'a Sector,
+    pub top: &'a Sector,
+    pub bottom: &'a Sector,
+    pub left: &'a Sector,
+    pub right: &'a Sector,
 }
 
 impl<'a> AdjacentSectors<'a> {
     /// Create a new structure from all 6 neighbors.
-    pub fn new(back: Option<&'a Sector>,
-               front: Option<&'a Sector>,
-               top: Option<&'a Sector>,
-               bottom: Option<&'a Sector>,
-               left: Option<&'a Sector>,
-               right: Option<&'a Sector>) -> AdjacentSectors<'a> {
+    pub fn new(back: &'a Sector,
+               front: &'a Sector,
+               top: &'a Sector,
+               bottom: &'a Sector,
+               left: &'a Sector,
+               right: &'a Sector) -> AdjacentSectors<'a> {
         AdjacentSectors {
             back,
             front,

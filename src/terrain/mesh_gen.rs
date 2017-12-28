@@ -160,12 +160,39 @@ fn should_create_face(face: Face, coord: SectorSpaceCoords,
             }, |c| (blocks, Some(c))),
         */
         
+        /*
         Back => (blocks, coord.back()),
         Front => (blocks, coord.front()),
         Top => (blocks, coord.top()),
         Bottom => (blocks, coord.bottom()),
         Left => (blocks, coord.left()),
         Right => (blocks, coord.right()),
+        */
+        
+        Back =>
+            coord.back().map_or_else(|| {
+                (adjacent.back.blocks(), Some(SectorSpaceCoords::new(coord.x(), coord.y(), SECTOR_SIZE as u8 - 1)))
+            }, |c| (blocks, Some(c))),
+        Front => 
+            coord.front().map_or_else(|| {
+                (adjacent.front.blocks(), Some(SectorSpaceCoords::new(coord.x(), coord.y(), 0)))
+            }, |c| (blocks, Some(c))),
+        Top =>
+            coord.top().map_or_else(|| {
+                (adjacent.top.blocks(), Some(SectorSpaceCoords::new(coord.x(), 0, coord.z())))
+            }, |c| (blocks, Some(c))),
+        Bottom =>
+            coord.bottom().map_or_else(|| {
+                (adjacent.bottom.blocks(), Some(SectorSpaceCoords::new(coord.x(), SECTOR_SIZE as u8 - 1, coord.z())))
+            }, |c| (blocks, Some(c))),
+        Left =>
+            coord.left().map_or_else(|| {
+                (adjacent.left.blocks(), Some(SectorSpaceCoords::new(SECTOR_SIZE as u8 - 1, coord.y(), coord.z())))
+            }, |c| (blocks, Some(c))),
+        Right =>
+            coord.right().map_or_else(|| {
+                (adjacent.right.blocks(), Some(SectorSpaceCoords::new(0, coord.y(), coord.z())))
+            }, |c| (blocks, Some(c))),
     };
     
     other_coord.map_or(true, |c| !block_list.get(c).needs_rendering())
