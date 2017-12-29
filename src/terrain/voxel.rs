@@ -202,6 +202,35 @@ impl<'a> IntoIterator for &'a BlockList {
     }
 }
 
+/// Holds references to all adjacent sectors.
+pub struct AdjacentSectors<'a> {
+    pub back: &'a Sector,
+    pub front: &'a Sector,
+    pub top: &'a Sector,
+    pub bottom: &'a Sector,
+    pub left: &'a Sector,
+    pub right: &'a Sector,
+}
+
+impl<'a> AdjacentSectors<'a> {
+    /// Create a new structure from all 6 neighbors.
+    pub fn new(back: &'a Sector,
+               front: &'a Sector,
+               top: &'a Sector,
+               bottom: &'a Sector,
+               left: &'a Sector,
+               right: &'a Sector) -> AdjacentSectors<'a> {
+        AdjacentSectors {
+            back,
+            front,
+            top,
+            bottom,
+            left,
+            right,
+        }
+    }
+}
+
 /// An individual "chunk" of the world.
 pub struct Sector {
     blocks: BlockList,
@@ -209,33 +238,13 @@ pub struct Sector {
 }
 
 impl Sector {
-    /// Create a sector filled with `Granite`.
-    pub fn new(resources: &Resources, pos: (i32, i32, i32), blocks: BlockList) -> Sector {
-        //let blocks = BlockList([Block::Loam; SECTOR_LEN]);
-        
-        if blocks.needs_rendering() {
-            let terrain_tex = resources.terrain_tex();
-            
-            let vertices = mesh_gen::generate_block_vertices(&blocks, &terrain_tex.1);
-            let tess = Tess::new(Mode::Triangle, TessVertices::Fill(&vertices), None);
-            
-            let translation = Translation::new((pos.0 * SECTOR_SIZE as i32) as f32,
-                                               (pos.1 * SECTOR_SIZE as i32) as f32,
-                                               (pos.2 * SECTOR_SIZE as i32) as f32);
-                                               
-            //println!("translation: {:?}", translation);
-            
-            let model = Some(Model::with_translation(tess, terrain_tex, translation));
-            
-            Sector {
-                blocks,
-                model,
-            }
-        } else {
-            Sector {
-                blocks,
-                model: None,
-            }
+    /// Create a sector.
+    pub fn new(blocks: BlockList) -> Sector {
+            //let blocks = BlockList([Block::Loam; SECTOR_LEN]);
+
+        Sector {
+            blocks,
+            model: None,
         }
     }
     
@@ -243,5 +252,36 @@ impl Sector {
     /// The model may not exist, in which case `None` is returned.
     pub fn model(&self) -> Option<&Model<Vertex>> {
         self.model.as_ref()
+    }
+    
+    /// Set the `Sector`'s `Model`.
+    pub fn set_model(&mut self, model: Option<Model<Vertex>>) {
+        self.model = model;
+    }
+    
+    /// Return this sector's `BlockList`.
+    pub fn blocks(&self) -> &BlockList {
+        &self.blocks
+    }
+    
+    /// Create the `Model` for the `Sector`.
+    pub fn create_model(&self, resources: &Resources, pos: (i32, i32, i32),
+                  adjacent: &AdjacentSectors) -> Option<Model<Vertex>> {
+        if self.blocks.needs_rendering() {
+            let terrain_tex = resources.terrain_tex();
+            
+            let vertices = mesh_gen::generate_block_vertices(&self.blocks, adjacent, &terrain_tex.1);
+            let tess = Tess::new(Mode::Triangle, TessVertices::Fill(&vertices), None);
+            
+            let translation = Translation::new((pos.0 * SECTOR_SIZE as i32) as f32,
+                                               (pos.1 * SECTOR_SIZE as i32) as f32,
+                                               (pos.2 * SECTOR_SIZE as i32) as f32);
+                                           
+            //println!("translation: {:?}", translation);
+            
+            Some(Model::with_translation(tess, terrain_tex, translation))
+        } else {
+            None
+        }
     }
 }
