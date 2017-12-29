@@ -22,7 +22,7 @@ use maths::{ToMatrix, Translation};
 use model::Drawable;
 use resources::Resources;
 use shader;
-use self::voxel::{AdjacentSectors, Block, BlockList, Sector};
+use self::voxel::{AdjacentSectors, BlockList, Sector};
 use self::world_gen::WorldGen;
 
 // Type of terrain position vertex attribute.
@@ -62,7 +62,7 @@ impl<'a> Terrain<'a> {
         
         let shared_info = Arc::new(Mutex::new(Default::default()));
         
-        let mut sectors = HashMap::with_capacity(5 * 5 * 5);
+        let sectors = HashMap::with_capacity(5 * 5 * 5);
         //for dx in -2..3 {
         //    for dy in -2..3 {                
         //        for dz in -2..3 {
@@ -175,64 +175,6 @@ impl<'a> Terrain<'a> {
                 Nearby::Generated(sector_coords, block_list) => {
                     self.sectors.entry(sector_coords).or_insert_with(|| Sector::new(block_list));
                 },
-                /*
-                Nearby::PleaseRender(sector_coords) => {
-                    let mut model = None;
-                    
-                    if let Some(sector) = self.sectors.get(&sector_coords) {
-                        if sector.model().is_some() {
-                            break;
-                        }
-                        
-                        let back   = (sector_coords.0,     sector_coords.1,     sector_coords.2 - 1);
-                        let front  = (sector_coords.0,     sector_coords.1,     sector_coords.2 + 1);
-                        let top    = (sector_coords.0,     sector_coords.1 + 1, sector_coords.2    );
-                        let bottom = (sector_coords.0,     sector_coords.1 - 1, sector_coords.2    );
-                        let left   = (sector_coords.0 - 1, sector_coords.1,     sector_coords.2    );
-                        let right  = (sector_coords.0 + 1, sector_coords.1,     sector_coords.2    );
-                        
-                        let back = self.sectors.get(&back);
-                        if back.is_none() {
-                            break;
-                        }
-                        
-                        let front = self.sectors.get(&front);
-                        if front.is_none() {
-                            break;
-                        }
-                        
-                        let top = self.sectors.get(&top);
-                        if top.is_none() {
-                            break;
-                        }
-                        
-                        let bottom = self.sectors.get(&bottom);
-                        if bottom.is_none() {
-                            break;
-                        }
-                        
-                        let left = self.sectors.get(&left);
-                        if left.is_none() {
-                            break;
-                        }
-                        
-                        let right = self.sectors.get(&right);
-                        if right.is_none() {
-                            break;
-                        }
-                        
-                        let adjacent = AdjacentSectors::new(back, front,
-                                                            top, bottom,
-                                                            left, right);
-                            
-                        model = Some(sector.create_model(self.resources, sector_coords, &adjacent));
-                    }
-                    
-                    if let Some(m) = model {
-                        self.sectors.get_mut(&sector_coords).unwrap().set_model(m);
-                    }
-                },
-                */
             }
             //println!("nearby: {:?}", sector);
             
@@ -258,8 +200,7 @@ impl<'a> Terrain<'a> {
             
             //println!("{}", dist_sq);
             
-            //dist_sq < 280.
-            true
+            dist_sq < 280.
         });
     }
     
@@ -390,7 +331,7 @@ impl TerrainGenThread {
         }
     }
     
-    fn spawn(mut self) {
+    fn spawn(self) {
         thread::spawn(move || {
             loop {                
                 let info = self.shared_info.lock().unwrap();

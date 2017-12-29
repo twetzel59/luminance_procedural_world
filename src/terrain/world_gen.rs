@@ -53,7 +53,7 @@ impl WorldGen {
                             [(x as f32 + SECTOR_SIZE as f32 * sector.0 as f32) * 0.0073,
                              (z as f32 + SECTOR_SIZE as f32 * sector.2 as f32) * 0.0073]);
                     
-                    let highest = ((value.max(0.) * 40.) as usize + 2);
+                    let highest = (value.max(0.) * 40.) as usize + 2;
                     
                     for y in 0..highest {
                         if y == 1 {
