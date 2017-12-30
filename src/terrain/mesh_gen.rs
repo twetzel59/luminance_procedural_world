@@ -217,22 +217,22 @@ fn generate_face(v: &mut Vec<Vertex>, block: (SectorSpaceCoords, &Block),
     
     let original = ((block.0).x() as f32, (block.0).y() as f32, (block.0).z() as f32);
     
-    let mut vtx0 = (POSITIONS[triangles[0]], uv.0);
+    let mut vtx0 = (POSITIONS[triangles[0]], uv.0, face as u32);
     vtx0.0[0] += original.0;
     vtx0.0[1] += original.1;
     vtx0.0[2] += original.2;
     
-    let mut vtx1 = (POSITIONS[triangles[1]], uv.1);
+    let mut vtx1 = (POSITIONS[triangles[1]], uv.1, face as u32);
     vtx1.0[0] += original.0;
     vtx1.0[1] += original.1;
     vtx1.0[2] += original.2;
     
-    let mut vtx2 = (POSITIONS[triangles[2]], uv.2);
+    let mut vtx2 = (POSITIONS[triangles[2]], uv.2, face as u32);
     vtx2.0[0] += original.0;
     vtx2.0[1] += original.1;
     vtx2.0[2] += original.2;
     
-    let mut vtx3 = (POSITIONS[triangles[3]], uv.3);
+    let mut vtx3 = (POSITIONS[triangles[3]], uv.3, face as u32);
     vtx3.0[0] += original.0;
     vtx3.0[1] += original.1;
     vtx3.0[2] += original.2;

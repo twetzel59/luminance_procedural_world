@@ -20,6 +20,8 @@ pub enum Block {
     Limestone,
     Loam,
     Grass,
+    Tree,
+    Leaves,
 }
 
 impl Block {

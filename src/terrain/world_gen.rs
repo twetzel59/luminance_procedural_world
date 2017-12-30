@@ -4,10 +4,15 @@ use noise::{BasicMulti, MultiFractal, NoiseModule};
 use super::SECTOR_SIZE;
 use super::voxel::{Block, BlockList, SectorSpaceCoords};
 
+const SECTOR_SIZE_F: f32 = SECTOR_SIZE as f32;
+
 /// The world generator.
 pub struct WorldGen {
     //perlin: Perlin,
-    noisemod: BasicMulti<f32>,
+    base_terrain: BasicMulti<f32>,
+    compression: BasicMulti<f32>,
+    general_height: BasicMulti<f32>,
+    tree: (BasicMulti<f32>, BasicMulti<f32>),
 }
 
 impl WorldGen {
@@ -15,7 +20,11 @@ impl WorldGen {
     pub fn new() -> WorldGen {
         WorldGen {
             //perlin: Perlin::new(),
-            noisemod: BasicMulti::new().set_persistence(0.1),
+            base_terrain: BasicMulti::new().set_persistence(0.1),
+            compression: BasicMulti::new().set_persistence(0.05),
+            general_height: BasicMulti::new().set_octaves(4).set_frequency(0.5),
+            tree: (BasicMulti::new().set_frequency(0.01),
+                   BasicMulti::new().set_frequency(1.0)),
         }
     }
     
@@ -92,19 +101,65 @@ impl WorldGen {
             
             for x in 0..SECTOR_SIZE {
                 for z in 0..SECTOR_SIZE {
-                    let height = self.noisemod.get(
-                        [(x as f32 + SECTOR_SIZE as f32 * sector.0 as f32) * 0.007,
-                         (z as f32 + SECTOR_SIZE as f32 * sector.2 as f32) * 0.007]);
+                    let (fx, fz) = (x as f32, z as f32);
+                    let (s0, s2) = (sector.0 as f32, sector.2 as f32);
                     
-                    let middle = (SECTOR_SIZE / 2) as f32;
+                    let comp = (self.compression.get(
+                        [(fx + SECTOR_SIZE_F * s0) * 0.005,
+                         (fz + SECTOR_SIZE_F * s2) * 0.005]) + 1.0).min(1.0);
                     
-                    let highest = (middle + height * 40.).max(0.).min(SECTOR_SIZE as f32) as usize;
+                    //println!("{}", comp);
+                    
+                    let general_h = (self.general_height.get(
+                        [(fx + SECTOR_SIZE_F * s0) * 0.0009,
+                         (fz + SECTOR_SIZE_F * s2) * 0.0009]) + 1.5).min(1.0);
+                    
+                    let height = self.base_terrain.get(
+                        [(fx + SECTOR_SIZE_F * s0) * 0.007 * comp,
+                         (fz + SECTOR_SIZE_F * s2) * 0.007 * comp]) * general_h;
+                    
+                    let middle = SECTOR_SIZE_F / 2.;
+                    
+                    let highest = (middle + height * 40.).max(0.).min(SECTOR_SIZE_F) as usize;
                     
                     //println!("highest: {}", highest);
                     
                     for y in 0..highest {
                         list.set(SectorSpaceCoords::new(x as u8, y as u8, z as u8),
                                  Block::Grass);
+                    }
+                    
+                    // Trees
+                    if x >= 3 && x <= SECTOR_SIZE - 3 && z >= 3 && z <= SECTOR_SIZE - 3 && highest < SECTOR_SIZE - 8 {
+                        let tree_chance = self.tree.0.get(
+                            [fx + SECTOR_SIZE_F * s0 * 1.1,
+                             fz + SECTOR_SIZE_F * s2 * 1.1]);
+                        
+                        if tree_chance > 0.2 {
+                            let tree_chance2 = self.tree.1.get(
+                                [fx / 2. + SECTOR_SIZE_F * s0 * 1.1,
+                                 fz / 2. + SECTOR_SIZE_F * s2 * 1.1]);
+                            
+                            //println!("{}", tree_chance2);
+                            
+                            if tree_chance2 > 0.25 {
+                                //list.set(SectorSpaceCoords::new(x as u8, highest.min(SECTOR_SIZE - 1) as u8, z as u8),
+                                //         Block::Loam);
+                                
+                                for h in 0..8 {
+                                    list.set(SectorSpaceCoords::new(x as u8, (h + highest) as u8, z as u8),
+                                             Block::Tree);
+                                    for dx in -2i32..3 {
+                                        for dy in 4i32..8 {
+                                            for dz in -2i32..3 {
+                                                list.set(SectorSpaceCoords::new((x as i32 + dx) as u8, (highest as i32 + dy) as u8, (z as i32  + dz) as u8),
+                                                         Block::Leaves);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
