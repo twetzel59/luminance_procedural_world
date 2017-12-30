@@ -31,8 +31,13 @@ type Position = [f32; 3];
 // Type of terrain texture coordinate attribute.
 type UV = [f32; 2];
 
+// Type of face attribute. Serves to replace the normal
+// vector, since on a cube the normals always lie along
+// an axis.
+type FaceNum = u32;
+
 // A terrain vertex.
-type Vertex = (Position, UV);
+type Vertex = (Position, UV, FaceNum);
 
 /// The length of one side of a cubic sector.
 pub const SECTOR_SIZE: usize = 32;

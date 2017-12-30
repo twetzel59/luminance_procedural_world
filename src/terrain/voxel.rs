@@ -20,6 +20,8 @@ pub enum Block {
     Limestone,
     Loam,
     Grass,
+    Tree,
+    Leaves,
 }
 
 impl Block {
@@ -138,14 +140,20 @@ impl BlockList {
     pub fn new(blocks: [Block; SECTOR_LEN]) -> BlockList {
         BlockList(blocks)
     }
-}
+    
+    /// Create a new `BlockList` fulled with air.
+    pub fn new_air() -> BlockList {
+        BlockList([Block::Air; SECTOR_LEN])
+    }
 
-impl BlockList {
     /// Look at the block at a specific position in sector coords.
     pub fn get(&self, pos: SectorSpaceCoords) -> &Block {
-        let (x, y, z) = (pos.x() as usize, pos.y() as usize, pos.z() as usize);
-        
-        &self.0[x + y * SECTOR_SIZE + z * SECTOR_SIZE * SECTOR_SIZE]
+        &self.0[Self::index(pos)]
+    }
+    
+    /// Set a block at a specific position in sector coords.
+    pub fn set(&mut self, pos: SectorSpaceCoords, block: Block) {
+        self.0[Self::index(pos)] = block;
     }
     
     /// Determine if all blocks in the `BlockList` are air.
@@ -157,6 +165,13 @@ impl BlockList {
         }
         
         false
+    }
+    
+    // Determines the internal index of sector coords.
+    fn index(pos: SectorSpaceCoords) -> usize {
+        let (x, y, z) = (pos.x() as usize, pos.y() as usize, pos.z() as usize);
+        
+        x + y * SECTOR_SIZE + z * SECTOR_SIZE * SECTOR_SIZE
     }
 }
 
