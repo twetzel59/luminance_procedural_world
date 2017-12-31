@@ -13,6 +13,7 @@ use terrain::Terrain;
 
 const SCREEN_SIZE: (u32, u32) = (800, 800);
 const SPEED: f32 = 20.;
+const FAST_MULTIPLIER: f32 = 5.;
 const SENSITIVITY: f32 = 0.1;
 
 /// The core of the app, manages the program.
@@ -109,39 +110,44 @@ impl Viewer {
     }
     
     fn handle_realtime_input(&mut self, delta: f32) {
+        let multi = match self.device.lib_handle().get_key(Key::E) {
+            Action::Press | Action::Repeat => FAST_MULTIPLIER,
+            Action::Release => 1.,
+        };
+        
         match self.device.lib_handle().get_key(Key::W) {
             Action::Press | Action::Repeat =>
-                self.camera.move_dir(MovementDirection::Forward, SPEED * delta),
+                self.camera.move_dir(MovementDirection::Forward, SPEED * delta * multi),
             Action::Release => {},
         }
         
         match self.device.lib_handle().get_key(Key::S) {
             Action::Press | Action::Repeat =>
-                self.camera.move_dir(MovementDirection::Backward, SPEED * delta),
+                self.camera.move_dir(MovementDirection::Backward, SPEED * delta * multi),
             Action::Release => {},
         }
         
         match self.device.lib_handle().get_key(Key::A) {
             Action::Press | Action::Repeat =>
-                self.camera.move_dir(MovementDirection::Left, SPEED * delta),
+                self.camera.move_dir(MovementDirection::Left, SPEED * delta * multi),
             Action::Release => {},
         }
         
         match self.device.lib_handle().get_key(Key::D) {
             Action::Press | Action::Repeat =>
-                self.camera.move_dir(MovementDirection::Right, SPEED * delta),
+                self.camera.move_dir(MovementDirection::Right, SPEED * delta * multi),
             Action::Release => {},
         }
         
         match self.device.lib_handle().get_key(Key::Space) {
             Action::Press | Action::Repeat =>
-                self.camera.translation_mut().slide(0., SPEED * delta, 0.),
+                self.camera.translation_mut().slide(0., SPEED * delta * multi, 0.),
             Action::Release => {},
         }
         
         match self.device.lib_handle().get_key(Key::LeftShift) {
             Action::Press | Action::Repeat =>
-                self.camera.translation_mut().slide(0., -SPEED * delta, 0.),
+                self.camera.translation_mut().slide(0., -SPEED * delta * multi, 0.),
             Action::Release => {},
         }
         
