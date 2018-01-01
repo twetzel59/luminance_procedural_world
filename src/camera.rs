@@ -2,7 +2,7 @@
 
 use std::f32::consts::PI;
 use luminance::linear::M44;
-use maths::{self, Projection, Rotation, ToMatrix, Translation};
+use maths::{self, Frustum, Projection, Rotation, ToMatrix, Translation};
 
 /// A first person camera that moves, rotates along X and Y,
 /// and manages the projection matrix.
@@ -53,6 +53,11 @@ impl Camera {
     /// Allows access to the camera's translation.
     pub fn rotation_mut(&mut self) -> &mut Rotation {
         &mut self.rot
+    }
+    
+    /// Calculate the frustum of the camera. Somewhat expensive.
+    pub fn frustum(&self) -> Frustum {
+        Frustum::new(&self.projection_matrix, &self.to_matrix())
     }
     
     /// Move the camera based on the current direction.

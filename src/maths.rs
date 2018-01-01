@@ -39,6 +39,14 @@ macro_rules! mat4 {
              [$m30, $m31, $m32, $m33]]);
 }
 
+/// The identity matrix.
+pub const IDENTITY: M44 = mat4! [
+    1., 0., 0., 0.,
+    0., 1., 0., 0.,
+    0., 0., 1., 0.,
+    0., 0., 0., 1.,
+];
+
 /// Typeclass for types that can be represented by a 4x4 matrix.
 pub trait ToMatrix {
     /// Get the matrix representing the type's transform.
@@ -191,4 +199,119 @@ pub fn matrix_mul(left: &M44, right: &M44) -> M44 {
     }
     
     result
+}
+
+/// A 3D plane defined as (A, B, C, D).
+#[derive(Clone, Debug)]
+pub struct Plane {
+    pub a: f32,
+    pub b: f32,
+    pub c: f32,
+    pub d: f32,
+}
+
+impl Plane {
+    /// Create a plane from these coefficients.
+    pub fn new(a: f32, b: f32, c: f32, d: f32) -> Plane {
+        Plane {
+            a,
+            b,
+            c,
+            d
+        }
+    }
+    
+    /// Normalize the plane.
+    pub fn normalize(&mut self) {
+        let l = (sq(self.a) + sq(self.b) + sq(self.c)).sqrt();
+        
+        self.a /= l;
+        self.b /= l;
+        self.c /= l;
+        self.d /= l;
+    }
+}
+
+type FlatM44 = [f32; 16];
+
+/// Represents the frustum of the camera.
+#[derive(Clone, Debug)]
+pub struct Frustum {
+    planes: [Plane; 6],
+}
+
+impl Frustum {
+    /// Create the frustum from the projection and view matrices.
+    pub fn new(proj: &M44, view: &M44) -> Frustum {
+        // http://www.crownandcutlass.com/features/technicaldetails/frustum.html
+        // http://www.lighthouse3d.com/tutorials/view-frustum-culling/clip-space-approach-extracting-the-planes/
+        
+        let mat: FlatM44 = unsafe {
+            ::std::mem::transmute(matrix_mul(proj, view))
+        };
+        
+        let mut right  = Plane::new(mat[3]  - mat[0],
+                                    mat[7]  - mat[4],
+                                    mat[11] - mat[8],
+                                    mat[15] - mat[12]);
+
+        let mut left   = Plane::new(mat[3]  + mat[0],
+                                    mat[7]  + mat[4],
+                                    mat[11] + mat[8],
+                                    mat[15] + mat[12]);
+
+        let mut bottom = Plane::new(mat[3]  + mat[1],
+                                    mat[7]  + mat[5],
+                                    mat[11] + mat[9],
+                                    mat[15] + mat[13]);
+                                    
+        let mut top =    Plane::new(mat[3]  - mat[1],
+                                    mat[7]  - mat[5],
+                                    mat[11] - mat[9],
+                                    mat[15] - mat[13]);
+                                    
+        let mut far =    Plane::new(mat[3]  - mat[2],
+                                    mat[7]  - mat[6],
+                                    mat[11] - mat[10],
+                                    mat[15] - mat[14]);
+        
+        let mut near =   Plane::new(mat[3]  + mat[2],
+                                    mat[7]  + mat[6],
+                                    mat[11] + mat[10],
+                                    mat[15] + mat[14]);
+        
+        right.normalize();
+        left.normalize();
+        bottom.normalize();
+        top.normalize();
+        far.normalize();
+        near.normalize();
+        
+        Frustum {
+            planes: [
+                right,
+                left,
+                bottom,
+                top,
+                far,
+                near,
+            ],
+        }        
+    }
+    
+    /// Return a reference to the frustum planes in the order:
+    /// * Right
+    /// * Left
+    /// * Bottom
+    /// * Top
+    /// * Far
+    /// * Near
+    pub fn planes(&self) -> &[Plane; 6] {
+        &self.planes
+    }
+}
+
+// Utility
+fn sq(x: f32) -> f32 {
+    x * x
 }

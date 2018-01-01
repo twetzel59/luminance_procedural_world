@@ -18,7 +18,7 @@ use luminance::shader::program::{Program, ProgramError, Uniform, UniformBuilder,
                                  UniformInterface, UniformWarning};
 use luminance_glfw::{Device, GLFWDevice};
 use camera::Camera;
-use maths::{ToMatrix, Translation};
+use maths::{Frustum, ToMatrix, Translation};
 use model::Drawable;
 use resources::Resources;
 use shader;
@@ -227,13 +227,23 @@ impl<'a> Drawable for Terrain<'a> {
             render_target: &Framebuffer<Flat, Dim2, (), ()>,
             //shader: &Program<Self::Vertex, (), Self::Uniform>,
             camera: &Camera) {
+        let frustum = camera.frustum();
+        
         device.draw(|| {
             entry(|gpu| {                    
                 // TODO: Only bind the texture once, and ensure
                 // that the correct one is used.
                 pipeline(render_target, CLEAR_COLOR, |shade_gate| {
-                    for i in self.sectors.values() {
-                        if let Some(model) = i.model() {
+                    //let mut skipped = 0;
+                    //let mut air = 0;
+                    
+                    for i in &self.sectors {
+                        if let Some(model) = i.1.model() {
+                            if !sector_visible(&frustum, *i.0) {
+                                //skipped += 1;
+                                continue;
+                            }
+                            
                             gpu.bind_texture(&model.tex.0);
                             shade_gate.shade(&self.shader, |render_gate, uniforms| {
                                 uniforms.model_matrix.update(model.to_matrix());
@@ -247,8 +257,12 @@ impl<'a> Drawable for Terrain<'a> {
                                     tess_gate.render((&model.tess).into());
                                 });
                             });
-                        }
+                        }/* else {
+                            air += 1;
+                        }*/
                     }
+                    
+                    //println!("skipped: {} / {})", skipped, self.sectors.len() - air);
                 });
             });
         });
@@ -399,4 +413,29 @@ fn sector_at(pos: &Translation) -> (i32, i32, i32) {
     ((pos.x.round() / SECTOR_SIZE as f32).floor() as i32,
      (pos.y.round() / SECTOR_SIZE as f32).floor() as i32,
      (pos.z.round() / SECTOR_SIZE as f32).floor() as i32)
+}
+
+const SECTOR_SIZE_F: f32 = SECTOR_SIZE as f32;
+const SECTOR_SIZE_F_2: f32 = SECTOR_SIZE_F / 2.;
+
+fn sector_visible(frustum: &Frustum, pos: (i32, i32, i32)) -> bool {
+    // Convert sector coords to world space.
+    let pos = (pos.0 as f32 * SECTOR_SIZE_F + SECTOR_SIZE_F_2,
+               pos.1 as f32 * SECTOR_SIZE_F + SECTOR_SIZE_F_2,
+               pos.2 as f32 * SECTOR_SIZE_F + SECTOR_SIZE_F_2);
+    
+    //println!("pos: {:?}", pos);
+    //true
+    
+    for i in frustum.planes() {
+        //println!("plane: {:?}", i);
+        
+        let d = i.a * pos.0 + i.b * pos.1 + i.c * pos.2 + i.d;
+        
+        if d <= -SECTOR_SIZE_F {
+            return false;
+        }
+    }
+    
+    true
 }

@@ -41,7 +41,7 @@ impl Viewer {
                         WindowOpt::default())
     }
     
-    fn start(mut self) {
+    fn start(mut self) {        
         let resources = Resources::new();
         
         self.device.lib_handle_mut().set_cursor_mode(CursorMode::Disabled);
