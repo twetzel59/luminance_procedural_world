@@ -4,7 +4,8 @@ mod mesh_gen;
 mod voxel;
 mod world_gen;
 
-use std::collections::HashMap;
+use std::cmp::Ordering;
+use std::collections::{BinaryHeap, HashMap};
 use std::mem;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -330,12 +331,27 @@ enum Nearby {
 
 const GENERATE_ORDER: [i32; 7] = [0, -1, 1, -2, 2, 3, -3];
 const RENDER_DIST_AXIS: i32 = 2;
+const NUM_WORKERS: usize = 8;
+
+#[derive(PartialEq, Eq)]
+struct WorkerNeeded((i32, i32, i32), Instant);
+
+impl PartialOrd for WorkerNeeded {
+    fn partial_cmp(&self, other: &WorkerNeeded) -> Option<Ordering> {
+        self.0.partial_cmp(&other.0)
+    }
+}
+
+impl Ord for WorkerNeeded {
+    fn cmp(&self, other: &WorkerNeeded) -> Ordering {
+        self.0.cmp(&other.0)
+    }
+}
 
 struct TerrainGenThread {
     shared_info: SharedInfo,
     nearby_tx: Sender<Nearby>,
     needed_rx: Receiver<(i32, i32, i32)>,
-    gen: WorldGen,
 }
 
 impl TerrainGenThread {
@@ -346,13 +362,17 @@ impl TerrainGenThread {
             shared_info,
             nearby_tx,
             needed_rx,
-            gen: WorldGen::new(),
         }
     }
     
     fn spawn(self) {
+        let gen = WorldGen::new();
+        let queue = Arc::new(Mutex::new(BinaryHeap::new()));
+        let nearby_tx = self.nearby_tx.clone();
+        
+        let queue1 = queue.clone();
         thread::spawn(move || {
-            loop {                
+            loop {
                 let info = self.shared_info.lock().unwrap();
                 let player_pos = info.player_pos.clone();
                 //println!("{:?}", player_pos);
@@ -362,7 +382,7 @@ impl TerrainGenThread {
                 //println!("{:?}", sector);
                 
                 for dx in &GENERATE_ORDER {
-                    for dy in -2..3 {
+                    for dy in -3..1 {
                         for dz in &GENERATE_ORDER {
                             let sector = (sector.0 + dx,
                                           sector.1 + dy,
@@ -394,17 +414,44 @@ impl TerrainGenThread {
                 while let Ok(needed) = self.needed_rx.try_recv() {
                     //println!("will generate: {:?}", needed);
                     
-                    let list = self.gen.generate(needed);
+                    //let list = self.gen.generate(needed);
                     
-                    if self.nearby_tx.send(Nearby::Generated(needed, list)).is_err() {
-                        return;
-                    }
+                    //if self.nearby_tx.send(Nearby::Generated(needed, list)).is_err() {
+                    //    return;
+                    //}
+                    queue1.lock().unwrap().push(WorkerNeeded(needed, Instant::now()));
+                    //println!("push: {:?}", needed);
                 }
                 
-                thread::sleep(Duration::from_secs(3));
+                thread::sleep(Duration::from_secs(4));
                 //println!("tick");
             }
         });
+        
+        for _ in 0..NUM_WORKERS {
+            let gen = gen.clone();
+            let queue = queue.clone();
+            let nearby_tx = nearby_tx.clone();
+            
+            thread::spawn(move || {
+                loop {
+                    let mut q = queue.lock().unwrap();
+                    let item = q.pop();
+                    //println!("size: {} ({})", q.len(), i);
+                    mem::drop(q);
+                    
+                    if let Some(WorkerNeeded(coords, _)) = item {
+                        let block_list = gen.generate(coords);
+                        
+                        if nearby_tx.send(Nearby::Generated(coords, block_list)).is_err() {
+                            return;
+                        }
+                    }
+                    
+                    thread::sleep(Duration::from_millis(5));
+                }
+            });
+        }
     }
 }
 

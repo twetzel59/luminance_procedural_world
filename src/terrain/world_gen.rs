@@ -7,6 +7,7 @@ use super::voxel::{Block, BlockList, SectorSpaceCoords};
 const SECTOR_SIZE_F: f32 = SECTOR_SIZE as f32;
 
 /// The world generator.
+#[derive(Clone)]
 pub struct WorldGen {
     //perlin: Perlin,
     base_terrain: BasicMulti<f32>,
