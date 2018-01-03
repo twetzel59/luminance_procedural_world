@@ -4,8 +4,7 @@ mod mesh_gen;
 mod voxel;
 mod world_gen;
 
-use std::cmp::Ordering;
-use std::collections::{BinaryHeap, HashMap};
+use std::collections::{HashMap, VecDeque};
 use std::mem;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -333,21 +332,6 @@ const GENERATE_ORDER: [i32; 7] = [0, -1, 1, -2, 2, 3, -3];
 const RENDER_DIST_AXIS: i32 = 2;
 const NUM_WORKERS: usize = 8;
 
-#[derive(PartialEq, Eq)]
-struct WorkerNeeded((i32, i32, i32), Instant);
-
-impl PartialOrd for WorkerNeeded {
-    fn partial_cmp(&self, other: &WorkerNeeded) -> Option<Ordering> {
-        self.0.partial_cmp(&other.0)
-    }
-}
-
-impl Ord for WorkerNeeded {
-    fn cmp(&self, other: &WorkerNeeded) -> Ordering {
-        self.0.cmp(&other.0)
-    }
-}
-
 struct TerrainGenThread {
     shared_info: SharedInfo,
     nearby_tx: Sender<Nearby>,
@@ -367,7 +351,7 @@ impl TerrainGenThread {
     
     fn spawn(self) {
         let gen = WorldGen::new();
-        let queue = Arc::new(Mutex::new(BinaryHeap::new()));
+        let queue = Arc::new(Mutex::new(VecDeque::new()));
         let nearby_tx = self.nearby_tx.clone();
         
         let queue1 = queue.clone();
@@ -419,7 +403,7 @@ impl TerrainGenThread {
                     //if self.nearby_tx.send(Nearby::Generated(needed, list)).is_err() {
                     //    return;
                     //}
-                    queue1.lock().unwrap().push(WorkerNeeded(needed, Instant::now()));
+                    queue1.lock().unwrap().push_back(needed);
                     //println!("push: {:?}", needed);
                 }
                 
@@ -435,12 +419,11 @@ impl TerrainGenThread {
             
             thread::spawn(move || {
                 loop {
-                    let mut q = queue.lock().unwrap();
-                    let item = q.pop();
+                    let item = queue.lock().unwrap().pop_front();
                     //println!("size: {} ({})", q.len(), i);
-                    mem::drop(q);
+                    //mem::drop(q);
                     
-                    if let Some(WorkerNeeded(coords, _)) = item {
+                    if let Some(coords) = item {
                         let block_list = gen.generate(coords);
                         
                         if nearby_tx.send(Nearby::Generated(coords, block_list)).is_err() {
