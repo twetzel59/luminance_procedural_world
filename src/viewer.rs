@@ -12,7 +12,7 @@ use resources::Resources;
 use terrain::Terrain;
 
 const SCREEN_SIZE: (u32, u32) = (800, 800);
-const SPEED: f32 = 20.;
+const SPEED: f32 = 15.;
 const FAST_MULTIPLIER: f32 = 5.;
 const SENSITIVITY: f32 = 0.1;
 
@@ -46,6 +46,8 @@ impl Viewer {
         
         self.device.lib_handle_mut().set_cursor_mode(CursorMode::Disabled);
         
+        self.camera.translation_mut().y = 50.;
+        
         let mut terrain = Terrain::new(&resources);
         
         /*
@@ -70,6 +72,7 @@ impl Viewer {
         
         let mut delta = 0.;
         loop {
+            //println!("{:?}", terrain.collide(self.camera.translation_mut()));
             let begin = Instant::now();
             
             if !self.handle_events() {
@@ -78,6 +81,8 @@ impl Viewer {
             self.handle_realtime_input(delta);
             
             terrain.update(&self.camera);
+            
+            terrain.collide(self.camera.translation_mut());
             
             terrain.draw(&mut self.device, &self.render_target, &self.camera);
             

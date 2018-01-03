@@ -1,4 +1,4 @@
-//! Module related to managing and drawing terrain.
+//! Module related to managing, drawing, and colliding with terrain.
 
 mod mesh_gen;
 mod voxel;
@@ -22,7 +22,7 @@ use maths::{Frustum, ToMatrix, Translation};
 use model::Drawable;
 use resources::Resources;
 use shader;
-use self::voxel::{AdjacentSectors, BlockList, Sector};
+use self::voxel::{AdjacentSectors, Block, BlockList, Sector, SectorSpaceCoords};
 use self::world_gen::WorldGen;
 
 // Type of terrain position vertex attribute.
@@ -43,6 +43,7 @@ type Vertex = (Position, UV, FaceNum);
 pub const SECTOR_SIZE: usize = 32;
 
 const CLEAR_COLOR: [f32; 4] = [0.2, 0.75, 0.8, 1.0];
+const COLLIDE_PADDING: f32 = 0.3;
 
 /// Drawable manager for world terrain. Handles the rendering
 /// of each sector.
@@ -207,6 +208,123 @@ impl<'a> Terrain<'a> {
             
             dist_sq < 280.
         });
+    }
+    
+    /// Adjust for collisions with the terrain.
+    pub fn collide(&self, translation: &mut Translation) {
+        {
+            let back_t = Translation::new(translation.x, translation.y, translation.z.round() - 1.);
+            let back = match self.get_visible_block(&back_t) {
+                Some(b) => !b.is_air(),
+                None => false,
+            };
+            
+            let margin = back_t.z + 1. + COLLIDE_PADDING;
+            if back && translation.z < margin {
+                translation.z = margin;
+            }
+        }
+        
+        //
+        
+        {
+            let front_t = Translation::new(translation.x, translation.y, translation.z.round() + 1.);
+            let front = match self.get_visible_block(&front_t) {
+                Some(f) => !f.is_air(),
+                None => false,
+            };
+            
+            let margin = front_t.z - 1. - COLLIDE_PADDING;
+            if front && translation.z > margin {
+                translation.z = margin;
+            }
+        }
+        
+        //
+        
+        {
+            let above_t = Translation::new(translation.x, translation.y.round() + 1., translation.z);
+            let above = match self.get_visible_block(&above_t) {
+                Some(a) => !a.is_air(),
+                None => false,
+            };
+            
+            let margin = above_t.y - 1. - COLLIDE_PADDING;
+            if above && translation.y > margin {
+                translation.y = margin;
+            }
+        }
+        
+        //
+        
+        {
+            let below_t = Translation::new(translation.x, translation.y.round() - 1., translation.z);
+            let below = match self.get_visible_block(&below_t) {
+                Some(b) => !b.is_air(),
+                None => false,
+            };
+            
+            let margin = below_t.y + 1. + COLLIDE_PADDING;
+            if below && translation.y < margin {
+                translation.y = margin;
+            }
+            
+            //println!("{:?}, {:?}", self.get_visible_block(&below_t), *translation);
+
+        }
+        
+        //
+        
+        {
+            let left_t = Translation::new(translation.x.round() - 1., translation.y, translation.z);
+            let left = match self.get_visible_block(&left_t) {
+                Some(l) => !l.is_air(),
+                None => false,
+            };
+            
+            let margin = left_t.x + 1. + COLLIDE_PADDING;
+            if left && translation.x < margin {
+                translation.x = margin;
+            }
+        }
+        
+        //
+        
+        {
+            let right_t = Translation::new(translation.x.round() + 1., translation.y, translation.z);
+            let right = match self.get_visible_block(&right_t) {
+                Some(r) => !r.is_air(),
+                None => false,
+            };
+            
+            let margin = right_t.x - 1. - COLLIDE_PADDING;
+            if right && translation.x > margin {
+                translation.x = margin;
+            }
+        }
+    }
+    
+    // Get the block at this position in **world** coords.
+    // If the sector is generated but not rendered, `None`
+    // is returned.
+    fn get_visible_block(&self, pos: &Translation) -> Option<&Block> {
+        let sector_pos = sector_at(pos);
+        
+        let pos = (pos.x.round() as i32, pos.y.round() as i32, pos.z.round() as i32);
+        
+        if let Some(sector) = self.sectors.get(&sector_pos) {
+            if sector.model().is_none() && sector.blocks().needs_rendering() {
+                return None;
+            }
+            
+            let local = SectorSpaceCoords::new((pos.0 - sector_pos.0 * SECTOR_SIZE as i32) as u8,
+                                               (pos.1 - sector_pos.1 * SECTOR_SIZE as i32) as u8,
+                                               (pos.2 - sector_pos.2 * SECTOR_SIZE as i32) as u8);
+            
+            Some(sector.blocks().get(local))
+        } else {
+            None
+        }
     }
     
     fn load_shaders() ->
@@ -438,7 +556,7 @@ impl TerrainGenThread {
     }
 }
 
-// The nearest sector at a specific position.
+// The nearest sector at a translation.
 fn sector_at(pos: &Translation) -> (i32, i32, i32) {
     ((pos.x.round() / SECTOR_SIZE as f32).floor() as i32,
      (pos.y.round() / SECTOR_SIZE as f32).floor() as i32,
