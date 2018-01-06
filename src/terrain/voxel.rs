@@ -2,7 +2,7 @@
 
 use std::{iter, slice};
 use luminance::tess::{Mode, Tess, TessVertices};
-use super::{mesh_gen, Vertex, SECTOR_SIZE};
+use super::{Vertex, SECTOR_SIZE};
 use maths::Translation;
 use model::Model;
 use resources::Resources;

@@ -4,10 +4,10 @@ mod mesh_gen;
 mod voxel;
 mod world_gen;
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::mem;
 use std::sync::{Arc, Mutex};
-use std::sync::mpsc::{self, Receiver, Sender, SyncSender};
+use std::sync::mpsc::{self, Receiver, SyncSender};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 use linked_hash_map::LinkedHashMap;
@@ -50,7 +50,6 @@ const NUM_THREADS: usize = 8;
 const GENERATE_ORDER: [i32; 9] = [0, -1, 1, 2, -2, 3, -3, 4, -4];
 const MAX_PENDING_SECTORS: usize = NUM_THREADS * 4;
 const MAX_PENDING_REQUESTS: usize = 32;
-//const MAX_PER_FRAME: usize = 4;
 const MAX_LAG: f64 = 0.05;
 
 /// Drawable manager for world terrain. Handles the rendering
@@ -59,10 +58,7 @@ pub struct Terrain<'a> {
     shader: Program<Vertex, (), Uniforms>,
     resources: &'a Resources,
     sectors: HashMap<(i32, i32, i32), Sector>,
-    //needed: Arc<Mutex<HashMap<(i32, i32, i32), bool>>>,
     shared_info: SharedInfo,
-    //nearby_rx: Receiver<Nearby>,
-    //needed_tx: Sender<(i32, i32, i32)>,
     join_handles: [Option<JoinHandle<()>>; NUM_THREADS],
     generated_tx: SyncSender<Generated>,
     generated_rx: Receiver<Generated>,
@@ -78,41 +74,13 @@ impl<'a> Terrain<'a> {
             eprintln!("{:?}", warn);
         }
         
-        //let shared_info = Arc::new(Mutex::new(Default::default()));
-        
-        let mut sectors = HashMap::with_capacity(5 * 5 * 5);
-        //for dx in -2..3 {
-        //    for dy in -2..3 {                
-        //        for dz in -2..3 {
-        //            let pos = (dx, dy, dz);
-        //            
-        //            sectors.insert(pos, Sector::new(resources, pos));
-        //            
-        //            //println!("pos: {:?}", pos);
-        //        }
-        //    }
-        //}
-        
-        //sectors.insert((0, 0, 0), Sector::new(resources, (0, 0, 0), BlockList::new([Block::Loam; SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE])));
-        //sectors.insert((1, 0, 0), Sector::new(resources, (1, 0, 0), BlockList::new([Block::Loam; SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE])));
-        //sectors.insert((0, 0, 1), Sector::new(resources, (0, 0, 1), BlockList::new([Block::Loam; SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE])));
-        //sectors.insert((1, 0, 1), Sector::new(resources, (1, 0, 1), BlockList::new([Block::Loam; SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE])));
-        
-        //let (nearby_tx, nearby_rx) = mpsc::channel();
-        //let (needed_tx, needed_rx) = mpsc::channel();
-        //TerrainGenThread::new(shared_info.clone(), nearby_tx, needed_rx).spawn();
-        
         let (generated_tx, generated_rx) = mpsc::sync_channel(MAX_PENDING_SECTORS);
         
         Terrain {
             resources,
-            sectors,
-            //sectors: HashMap::new(),
+            sectors: HashMap::with_capacity(1000),
             shader,
-            //needed: HashMap::new(),
             shared_info: Arc::new(Mutex::new(Default::default())),
-            //nearby_rx,
-            //needed_tx,
             join_handles: Default::default(),
             generated_tx,
             generated_rx,
