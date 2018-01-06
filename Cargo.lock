@@ -128,6 +128,11 @@ version = "0.2.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "linked-hash-map"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "log"
 version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -160,6 +165,7 @@ name = "luminance_procedural_world"
 version = "0.1.0"
 dependencies = [
  "glfw 0.16.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "linked-hash-map 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "luminance 0.24.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "luminance-glfw 0.4.1 (git+https://github.com/twetzel59/luminance-glfw.git)",
  "noise 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -306,6 +312,7 @@ dependencies = [
 "checksum inflate 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "10ec05638adf7c5c788bc0cfa608cd479a13572beda20feb4898fe1d85d2c64b"
 "checksum khronos_api 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d867c645cfeb8a7fec503731679eac03ac11b7105aa5a71cb8f8ee5271636add"
 "checksum libc 0.2.33 (registry+https://github.com/rust-lang/crates.io-index)" = "5ba3df4dcb460b9dfbd070d41c94c19209620c191b0340b929ce748a2bcd42d2"
+"checksum linked-hash-map 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "2d2aab0478615bb586559b0114d94dd8eca4fdbb73b443adcb0d00b61692b4bf"
 "checksum log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)" = "880f77541efa6e5cc74e76910c9884d9859683118839d6a1dc3b11e63512565b"
 "checksum luminance 0.24.0 (registry+https://github.com/rust-lang/crates.io-index)" = "22b8d759844329e02790bef7b0da1190beb1564e831d8db9144c085be5b9c507"
 "checksum luminance-glfw 0.4.1 (git+https://github.com/twetzel59/luminance-glfw.git)" = "<none>"

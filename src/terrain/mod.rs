@@ -10,6 +10,7 @@ use std::sync::{Arc, Mutex};
 use std::sync::mpsc::{self, Receiver, Sender, SyncSender};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
+use linked_hash_map::LinkedHashMap;
 use luminance::framebuffer::Framebuffer;
 use luminance::linear::M44;
 use luminance::pipeline::{entry, pipeline, RenderState};
@@ -486,7 +487,7 @@ impl<'a> UniformInterface for Uniforms {
 
 #[derive(Debug)]
 struct WorldGenThreadInfo {
-    needed: HashMap<(i32, i32, i32), bool>,
+    needed: LinkedHashMap<(i32, i32, i32), bool>,
     exiting: bool,
 }
 
@@ -495,7 +496,7 @@ type SharedInfo = Arc<Mutex<WorldGenThreadInfo>>;
 impl Default for WorldGenThreadInfo {
     fn default() -> WorldGenThreadInfo {
         WorldGenThreadInfo {
-            needed: HashMap::new(),
+            needed: LinkedHashMap::new(),
             exiting: false,
         }
     }
