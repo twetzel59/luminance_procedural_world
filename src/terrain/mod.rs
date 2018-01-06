@@ -22,7 +22,7 @@ use maths::{Frustum, ToMatrix, Translation};
 use model::Drawable;
 use resources::Resources;
 use shader;
-use self::voxel::{AdjacentSectors, Block, BlockList, Sector, SectorSpaceCoords};
+use self::voxel::{Block, BlockList, Sector, SectorSpaceCoords};
 use self::world_gen::WorldGen;
 
 // Type of terrain position vertex attribute.
@@ -51,9 +51,9 @@ pub struct Terrain<'a> {
     shader: Program<Vertex, (), Uniforms>,
     resources: &'a Resources,
     sectors: HashMap<(i32, i32, i32), Sector>,
-    shared_info: SharedInfo,
-    nearby_rx: Receiver<Nearby>,
-    needed_tx: Sender<(i32, i32, i32)>,
+    //shared_info: SharedInfo,
+    //nearby_rx: Receiver<Nearby>,
+    //needed_tx: Sender<(i32, i32, i32)>,
 }
 
 impl<'a> Terrain<'a> {
@@ -66,9 +66,9 @@ impl<'a> Terrain<'a> {
             eprintln!("{:?}", warn);
         }
         
-        let shared_info = Arc::new(Mutex::new(Default::default()));
+        //let shared_info = Arc::new(Mutex::new(Default::default()));
         
-        let sectors = HashMap::with_capacity(5 * 5 * 5);
+        let mut sectors = HashMap::with_capacity(5 * 5 * 5);
         //for dx in -2..3 {
         //    for dy in -2..3 {                
         //        for dz in -2..3 {
@@ -81,122 +81,31 @@ impl<'a> Terrain<'a> {
         //    }
         //}
         
-        //sectors.insert((0, 0, 0), Sector::new(resources, (0, 0, 0), BlockList::new([Block::Loam; SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE])));
-        //sectors.insert((1, 0, 0), Sector::new(resources, (1, 0, 0), BlockList::new([Block::Loam; SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE])));
-        //sectors.insert((0, 0, 1), Sector::new(resources, (0, 0, 1), BlockList::new([Block::Loam; SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE])));
-        //sectors.insert((1, 0, 1), Sector::new(resources, (1, 0, 1), BlockList::new([Block::Loam; SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE])));
+        sectors.insert((0, 0, 0), Sector::new(resources, (0, 0, 0), BlockList::new([Block::Loam; SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE])));
+        sectors.insert((1, 0, 0), Sector::new(resources, (1, 0, 0), BlockList::new([Block::Loam; SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE])));
+        sectors.insert((0, 0, 1), Sector::new(resources, (0, 0, 1), BlockList::new([Block::Loam; SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE])));
+        sectors.insert((1, 0, 1), Sector::new(resources, (1, 0, 1), BlockList::new([Block::Loam; SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE])));
         
-        let (nearby_tx, nearby_rx) = mpsc::channel();
-        let (needed_tx, needed_rx) = mpsc::channel();
-        TerrainGenThread::new(shared_info.clone(), nearby_tx, needed_rx).spawn();
+        //let (nearby_tx, nearby_rx) = mpsc::channel();
+        //let (needed_tx, needed_rx) = mpsc::channel();
+        //TerrainGenThread::new(shared_info.clone(), nearby_tx, needed_rx).spawn();
         
         Terrain {
             resources,
             sectors,
             shader,
-            shared_info,
-            nearby_rx,
-            needed_tx,
+            //shared_info,
+            //nearby_rx,
+            //needed_tx,
         }
     }
     
     /// Perform a frame update.
     /// May block for some time until a mutex can be aquired.
     pub fn update(&mut self, camera: &Camera) {
-        let translation = camera.translation().clone();
-        self.shared_info.lock().unwrap().player_pos = translation.clone();
+        //self.shared_info.lock().unwrap().player_pos = translation.clone();
         
-        let begin = Instant::now();
-        while let Ok(nearby) = self.nearby_rx.try_recv() {
-            match nearby {
-                Nearby::Query { sector: sector_coords, should_render } => {
-                    //println!("sector_coords: {:?} => {}", sector_coords, should_render);
-                    
-                    if self.sectors.contains_key(&sector_coords) {
-                        if !should_render {
-                            //println!("bail1");
-                            break;
-                        }
-                        
-                        let model;
-                        {
-                            let sector = self.sectors.get(&sector_coords).unwrap();
-                            if !sector.blocks().needs_rendering() || sector.model().is_some() {
-                                //println!("bail2");
-                                break;
-                            }
-                            
-                            //println!("sector_coords: {:?}", sector_coords);
-                            
-                            let back   = (sector_coords.0,     sector_coords.1,     sector_coords.2 - 1);
-                            let front  = (sector_coords.0,     sector_coords.1,     sector_coords.2 + 1);
-                            let top    = (sector_coords.0,     sector_coords.1 + 1, sector_coords.2    );
-                            let bottom = (sector_coords.0,     sector_coords.1 - 1, sector_coords.2    );
-                            let left   = (sector_coords.0 - 1, sector_coords.1,     sector_coords.2    );
-                            let right  = (sector_coords.0 + 1, sector_coords.1,     sector_coords.2    );
-                            
-                            let back = self.sectors.get(&back);
-                            if back.is_none() {
-                                break;
-                            }
-                            
-                            let front = self.sectors.get(&front);
-                            if front.is_none() {
-                                break;
-                            }
-                            
-                            let top = self.sectors.get(&top);
-                            if top.is_none() {
-                                break;
-                            }
-                            
-                            let bottom = self.sectors.get(&bottom);
-                            if bottom.is_none() {
-                                break;
-                            }
-                            
-                            let left = self.sectors.get(&left);
-                            if left.is_none() {
-                                break;
-                            }
-                            
-                            let right = self.sectors.get(&right);
-                            if right.is_none() {
-                                break;
-                            }
-                            
-                            let adjacent = AdjacentSectors::new(back.unwrap(), front.unwrap(),
-                                                                top.unwrap(), bottom.unwrap(),
-                                                                left.unwrap(), right.unwrap());
-                                
-                            model = sector.create_model(self.resources, sector_coords, &adjacent);
-                        }
-                        
-                        let sector = self.sectors.get_mut(&sector_coords).unwrap();
-                        sector.set_model(model);
-                    } else {
-                        self.needed_tx.send(sector_coords).unwrap();
-                    }
-                },
-                Nearby::Generated(sector_coords, block_list) => {
-                    self.sectors.entry(sector_coords).or_insert_with(|| Sector::new(block_list));
-                },
-            }
-            //println!("nearby: {:?}", sector);
-            
-            let duration = Instant::now() - begin;
-            
-            let seconds = duration.as_secs() as f64 +
-                          duration.subsec_nanos() as f64 * 1e-9;
-            
-            if seconds > 0.05 {
-                //println!("too long: {}", seconds);
-                break;
-            }
-        }
-        //println!("time: {:?}", Instant::now() - begin);
-        
-        let sector = sector_at(&translation);
+        let sector = sector_at(&camera.translation());
         self.sectors.retain(|&k, _| {
             let dx = k.0 as f32 - sector.0 as f32;
             let dy = k.1 as f32 - sector.1 as f32;
@@ -422,6 +331,7 @@ impl<'a> UniformInterface for Uniforms {
 
 // Information shared between the main thread
 // and the worldgen thread.
+/*
 #[derive(Debug)]
 struct WorldGenThreadInfo {
      player_pos: Translation,
@@ -436,125 +346,7 @@ impl Default for WorldGenThreadInfo {
         }
     }
 }
-
-// Type for the 'nearby sector' channel.
-enum Nearby {
-    Query {
-        sector: (i32, i32, i32),
-        should_render: bool,
-    },
-    Generated((i32, i32, i32), BlockList),
-}
-
-const GENERATE_ORDER: [i32; 7] = [0, -1, 1, -2, 2, 3, -3];
-const RENDER_DIST_AXIS: i32 = 2;
-const NUM_WORKERS: usize = 8;
-
-struct TerrainGenThread {
-    shared_info: SharedInfo,
-    nearby_tx: Sender<Nearby>,
-    needed_rx: Receiver<(i32, i32, i32)>,
-}
-
-impl TerrainGenThread {
-    fn new(shared_info: SharedInfo,
-           nearby_tx: Sender<Nearby>,
-           needed_rx: Receiver<(i32, i32, i32)>) -> TerrainGenThread {
-        TerrainGenThread {
-            shared_info,
-            nearby_tx,
-            needed_rx,
-        }
-    }
-    
-    fn spawn(self) {
-        let gen = WorldGen::new();
-        let queue = Arc::new(Mutex::new(VecDeque::new()));
-        let nearby_tx = self.nearby_tx.clone();
-        
-        let queue1 = queue.clone();
-        thread::spawn(move || {
-            loop {
-                let info = self.shared_info.lock().unwrap();
-                let player_pos = info.player_pos.clone();
-                //println!("{:?}", player_pos);
-                mem::drop(info);
-                
-                let sector = sector_at(&player_pos);
-                //println!("{:?}", sector);
-                
-                for dx in &GENERATE_ORDER {
-                    for dy in -3..1 {
-                        for dz in &GENERATE_ORDER {
-                            let sector = (sector.0 + dx,
-                                          sector.1 + dy,
-                                          sector.2 + dz);
-                            
-                            let should_render = dx.abs() <= RENDER_DIST_AXIS &&
-                                                dy.abs() <= 1 &&
-                                                dz.abs() <= RENDER_DIST_AXIS;
-                            
-                            if self.nearby_tx.send(Nearby::Query { sector, should_render }).is_err() {
-                                return;
-                            }
-                            
-                            //println!("should_render: {}", should_render);
-                            
-                            /*
-                            if dx.abs() <= RENDER_DIST_AXIS && dz.abs() <= RENDER_DIST_AXIS {
-                                
-                            } else {
-                                println!("won't render {:?}", sector);
-                            }
-                            */
-                        }
-                    }
-                }
-                
-                //
-                
-                while let Ok(needed) = self.needed_rx.try_recv() {
-                    //println!("will generate: {:?}", needed);
-                    
-                    //let list = self.gen.generate(needed);
-                    
-                    //if self.nearby_tx.send(Nearby::Generated(needed, list)).is_err() {
-                    //    return;
-                    //}
-                    queue1.lock().unwrap().push_back(needed);
-                    //println!("push: {:?}", needed);
-                }
-                
-                thread::sleep(Duration::from_secs(4));
-                //println!("tick");
-            }
-        });
-        
-        for _ in 0..NUM_WORKERS {
-            let gen = gen.clone();
-            let queue = queue.clone();
-            let nearby_tx = nearby_tx.clone();
-            
-            thread::spawn(move || {
-                loop {
-                    let item = queue.lock().unwrap().pop_front();
-                    //println!("size: {} ({})", q.len(), i);
-                    //mem::drop(q);
-                    
-                    if let Some(coords) = item {
-                        let block_list = gen.generate(coords);
-                        
-                        if nearby_tx.send(Nearby::Generated(coords, block_list)).is_err() {
-                            return;
-                        }
-                    }
-                    
-                    thread::sleep(Duration::from_millis(5));
-                }
-            });
-        }
-    }
-}
+*/
 
 // The nearest sector at a translation.
 fn sector_at(pos: &Translation) -> (i32, i32, i32) {

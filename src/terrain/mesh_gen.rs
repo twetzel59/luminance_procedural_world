@@ -3,7 +3,7 @@
 
 use png::OutputInfo;
 use super::{Position, UV, Vertex, SECTOR_SIZE};
-use super::voxel::{AdjacentSectors, Block, BlockList, SectorSpaceCoords};
+use super::voxel::{Block, BlockList, SectorSpaceCoords};
 
 /*
 const OFFSETS: [Position; 3] = [
@@ -48,35 +48,34 @@ enum Face {
 }
 
 /// Generate the mesh for a `BlockList`.
-pub fn generate_block_vertices(blocks: &BlockList, adjacent: &AdjacentSectors,
-                               texture_info: &OutputInfo) -> Vec<Vertex> {
+pub fn generate_block_vertices(blocks: &BlockList, texture_info: &OutputInfo) -> Vec<Vertex> {
     use self::Face::*;
     
     let mut v = Vec::with_capacity(SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE * 24);
     
     for i in blocks {
         if !i.1.is_air() {
-            if should_create_face(Back, i.0, blocks, adjacent) {
+            if should_create_face(Back, i.0, blocks) {
                 generate_face(&mut v, i, Back, texture_info);
             }
             
-            if should_create_face(Front, i.0, blocks, adjacent) {
+            if should_create_face(Front, i.0, blocks) {
                 generate_face(&mut v, i, Front, texture_info);
             }
             
-            if should_create_face(Top, i.0, blocks, adjacent) {
+            if should_create_face(Top, i.0, blocks) {
                 generate_face(&mut v, i, Top, texture_info);
             }
             
-            if should_create_face(Bottom, i.0, blocks, adjacent) {
+            if should_create_face(Bottom, i.0, blocks) {
                 generate_face(&mut v, i, Bottom, texture_info);
             }
             
-            if should_create_face(Left, i.0, blocks, adjacent) {
+            if should_create_face(Left, i.0, blocks) {
                 generate_face(&mut v, i, Left, texture_info);
             }
             
-            if should_create_face(Right, i.0, blocks, adjacent) {
+            if should_create_face(Right, i.0, blocks) {
                 generate_face(&mut v, i, Right, texture_info);
             }
         }
@@ -89,8 +88,7 @@ pub fn generate_block_vertices(blocks: &BlockList, adjacent: &AdjacentSectors,
     v
 }
 
-fn should_create_face(face: Face, coord: SectorSpaceCoords,
-                      blocks: &BlockList, adjacent: &AdjacentSectors) -> bool {
+fn should_create_face(face: Face, coord: SectorSpaceCoords, blocks: &BlockList) -> bool {
     use self::Face::*;
     
     let (block_list, other_coord) = match face {
@@ -160,15 +158,14 @@ fn should_create_face(face: Face, coord: SectorSpaceCoords,
             }, |c| (blocks, Some(c))),
         */
         
-        /*
         Back => (blocks, coord.back()),
         Front => (blocks, coord.front()),
         Top => (blocks, coord.top()),
         Bottom => (blocks, coord.bottom()),
         Left => (blocks, coord.left()),
         Right => (blocks, coord.right()),
-        */
         
+        /*
         Back =>
             coord.back().map_or_else(|| {
                 (adjacent.back.blocks(), Some(SectorSpaceCoords::new(coord.x(), coord.y(), SECTOR_SIZE as u8 - 1)))
@@ -193,6 +190,7 @@ fn should_create_face(face: Face, coord: SectorSpaceCoords,
             coord.right().map_or_else(|| {
                 (adjacent.right.blocks(), Some(SectorSpaceCoords::new(0, coord.y(), coord.z())))
             }, |c| (blocks, Some(c))),
+        */
     };
     
     other_coord.map_or(true, |c| !block_list.get(c).needs_rendering())
