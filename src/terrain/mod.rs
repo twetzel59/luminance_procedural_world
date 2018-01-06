@@ -8,7 +8,7 @@ use std::collections::{HashMap, VecDeque};
 use std::mem;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::{self, Receiver, Sender};
-use std::thread;
+use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 use luminance::framebuffer::Framebuffer;
 use luminance::linear::M44;
@@ -51,9 +51,11 @@ pub struct Terrain<'a> {
     shader: Program<Vertex, (), Uniforms>,
     resources: &'a Resources,
     sectors: HashMap<(i32, i32, i32), Sector>,
-    //shared_info: SharedInfo,
+    //needed: Arc<Mutex<HashMap<(i32, i32, i32), bool>>>,
+    shared_info: SharedInfo,
     //nearby_rx: Receiver<Nearby>,
     //needed_tx: Sender<(i32, i32, i32)>,
+    join_handle: Option<JoinHandle<()>>,
 }
 
 impl<'a> Terrain<'a> {
@@ -93,10 +95,54 @@ impl<'a> Terrain<'a> {
         Terrain {
             resources,
             sectors,
+            //sectors: HashMap::new(),
             shader,
-            //shared_info,
+            //needed: HashMap::new(),
+            shared_info: Arc::new(Mutex::new(Default::default())),
             //nearby_rx,
             //needed_tx,
+            join_handle: None,
+        }
+    }
+    
+    /// Spawn the world generation thread.
+    /// The terrain will immediately begin generating.
+    pub fn spawn_generator(&mut self) {
+        let shared_info = self.shared_info.clone();
+        
+        self.join_handle = Some(thread::spawn(move || {
+            loop {
+                let shared_info = shared_info.lock().unwrap();
+                
+                if shared_info.exiting {
+                    return;
+                }
+                
+                // ABSOLUTELY CRITICAL
+                // to avoid deadlock
+                mem::drop(shared_info);
+                thread::sleep(Duration::from_millis(500));
+                //
+            }
+        }));
+    }
+    
+    // Stop generating the world, terminating and joining
+    // the generation thread. This function is called by
+    // `Terrain`'s `Drop` impl.
+    // # Panics
+    // Panics if the worldgen thread panicked.
+    // # Blocking
+    // This function blocks while joining and while waiting
+    // to acquire a mutex.
+    fn stop_generator(&mut self) {
+        if let Some(handle) = self.join_handle.take() {
+            println!("Stopping worldgen thread...");
+            self.shared_info.lock().unwrap().exiting = true;
+            println!("Aquired lock");
+            
+            handle.join().unwrap();
+            println!("Joined worldgen thread");
         }
     }
     
@@ -245,6 +291,14 @@ impl<'a> Terrain<'a> {
     }
 }
 
+impl<'a> Drop for Terrain<'a> {
+    /// This may block for some time, while
+    /// the world generation thread stops.
+    fn drop(&mut self) {
+        self.stop_generator();
+    }
+}
+
 impl<'a> Drawable for Terrain<'a> {
     //type Vertex = TerrainVertex;
     //type Uniform = TerrainUniforms;
@@ -331,10 +385,11 @@ impl<'a> UniformInterface for Uniforms {
 
 // Information shared between the main thread
 // and the worldgen thread.
-/*
+
 #[derive(Debug)]
 struct WorldGenThreadInfo {
-     player_pos: Translation,
+     needed: HashMap<(i32, i32, i32), bool>,
+     exiting: bool,
 }
 
 type SharedInfo = Arc<Mutex<WorldGenThreadInfo>>;
@@ -342,11 +397,11 @@ type SharedInfo = Arc<Mutex<WorldGenThreadInfo>>;
 impl Default for WorldGenThreadInfo {
     fn default() -> WorldGenThreadInfo {
         WorldGenThreadInfo {
-            player_pos: Translation::new(0., 0., 0.),
+            needed: HashMap::new(),
+            exiting: false,
         }
     }
 }
-*/
 
 // The nearest sector at a translation.
 fn sector_at(pos: &Translation) -> (i32, i32, i32) {

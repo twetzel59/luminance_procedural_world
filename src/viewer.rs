@@ -70,6 +70,8 @@ impl Viewer {
         println!("test3: {:?}", test3);
         */
         
+        terrain.spawn_generator();
+        
         let mut delta = 0.;
         loop {
             //println!("{:?}", terrain.collide(self.camera.translation_mut()));
