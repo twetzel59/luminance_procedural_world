@@ -225,11 +225,12 @@ pub struct Sector {
 
 impl Sector {
     /// Create a sector.
-    pub fn new(resources: &Resources, pos: (i32, i32, i32), blocks: BlockList) -> Sector {
+    pub fn new(resources: &Resources, pos: (i32, i32, i32),
+               blocks: BlockList, vertices: Vec<Vertex>) -> Sector {
         let model = if blocks.needs_rendering() {
             let terrain_tex = resources.terrain_tex();
             
-            let vertices = mesh_gen::generate_block_vertices(&blocks, &terrain_tex.1);
+            //let vertices = mesh_gen::generate_block_vertices(&blocks, &terrain_tex.1);
             let tess = Tess::new(Mode::Triangle, TessVertices::Fill(&vertices), None);
             
             let translation = Translation::new((pos.0 * SECTOR_SIZE as i32) as f32,

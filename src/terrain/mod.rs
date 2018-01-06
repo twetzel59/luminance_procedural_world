@@ -7,7 +7,7 @@ mod world_gen;
 use std::collections::{HashMap, VecDeque};
 use std::mem;
 use std::sync::{Arc, Mutex};
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::mpsc::{self, Receiver, Sender, SyncSender};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 use luminance::framebuffer::Framebuffer;
@@ -17,6 +17,7 @@ use luminance::texture::{Dim2, Flat};
 use luminance::shader::program::{Program, ProgramError, Uniform, UniformBuilder,
                                  UniformInterface, UniformWarning};
 use luminance_glfw::{Device, GLFWDevice};
+use png::OutputInfo;
 use camera::Camera;
 use maths::{Frustum, ToMatrix, Translation};
 use model::Drawable;
@@ -45,9 +46,11 @@ pub const SECTOR_SIZE: usize = 32;
 const CLEAR_COLOR: [f32; 4] = [0.2, 0.75, 0.8, 1.0];
 const COLLIDE_PADDING: f32 = 0.3;
 const NUM_THREADS: usize = 8;
-const GENERATE_ORDER: [i32; 5] = [0, -1, 1, 2, -2];
-const MAX_PENDING_SECTORS: usize = 256;
-//const MAX_PER_FRAME: usize = 32;
+const GENERATE_ORDER: [i32; 9] = [0, -1, 1, 2, -2, 3, -3, 4, -4];
+const MAX_PENDING_SECTORS: usize = NUM_THREADS * 4;
+const MAX_PENDING_REQUESTS: usize = 32;
+//const MAX_PER_FRAME: usize = 4;
+const MAX_LAG: f64 = 0.05;
 
 /// Drawable manager for world terrain. Handles the rendering
 /// of each sector.
@@ -60,7 +63,7 @@ pub struct Terrain<'a> {
     //nearby_rx: Receiver<Nearby>,
     //needed_tx: Sender<(i32, i32, i32)>,
     join_handles: [Option<JoinHandle<()>>; NUM_THREADS],
-    generated_tx: Sender<Generated>,
+    generated_tx: SyncSender<Generated>,
     generated_rx: Receiver<Generated>,
 }
 
@@ -89,16 +92,16 @@ impl<'a> Terrain<'a> {
         //    }
         //}
         
-        sectors.insert((0, 0, 0), Sector::new(resources, (0, 0, 0), BlockList::new([Block::Loam; SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE])));
-        sectors.insert((1, 0, 0), Sector::new(resources, (1, 0, 0), BlockList::new([Block::Loam; SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE])));
-        sectors.insert((0, 0, 1), Sector::new(resources, (0, 0, 1), BlockList::new([Block::Loam; SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE])));
-        sectors.insert((1, 0, 1), Sector::new(resources, (1, 0, 1), BlockList::new([Block::Loam; SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE])));
+        //sectors.insert((0, 0, 0), Sector::new(resources, (0, 0, 0), BlockList::new([Block::Loam; SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE])));
+        //sectors.insert((1, 0, 0), Sector::new(resources, (1, 0, 0), BlockList::new([Block::Loam; SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE])));
+        //sectors.insert((0, 0, 1), Sector::new(resources, (0, 0, 1), BlockList::new([Block::Loam; SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE])));
+        //sectors.insert((1, 0, 1), Sector::new(resources, (1, 0, 1), BlockList::new([Block::Loam; SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE])));
         
         //let (nearby_tx, nearby_rx) = mpsc::channel();
         //let (needed_tx, needed_rx) = mpsc::channel();
         //TerrainGenThread::new(shared_info.clone(), nearby_tx, needed_rx).spawn();
         
-        let (generated_tx, generated_rx) = mpsc::channel();
+        let (generated_tx, generated_rx) = mpsc::sync_channel(MAX_PENDING_SECTORS);
         
         Terrain {
             resources,
@@ -121,6 +124,16 @@ impl<'a> Terrain<'a> {
         for i in self.join_handles.iter_mut() {        
             let shared_info = self.shared_info.clone();
             let generated_tx = self.generated_tx.clone();
+            let tex = self.resources.terrain_tex();
+            // 3rd party lacks `Clone` impl, but POD
+            // struct contents is enough.
+            let tex_info = OutputInfo {
+                width: tex.1.width,
+                height: tex.1.height,
+                color_type: tex.1.color_type,
+                bit_depth: tex.1.bit_depth,
+                line_size: tex.1.line_size,
+            };
             
             *i = Some(thread::spawn(move || {
                 let wg = WorldGen::new();
@@ -150,9 +163,13 @@ impl<'a> Terrain<'a> {
                         shared_info.needed.remove(&s);
                         mem::drop(shared_info);
                         
+                        let list = wg.generate(s);
+                        let vertices = mesh_gen::generate_block_vertices(&list, &tex_info);
+                        
                         let generated = Generated {
                             pos: s,
-                            list: wg.generate(s),
+                            list,
+                            vertices,
                         };
                         
                         let _ = generated_tx.send(generated);
@@ -182,6 +199,9 @@ impl<'a> Terrain<'a> {
         self.shared_info.lock().unwrap().exiting = true;
         println!("Aquired lock");
         
+        while let Ok(_) = self.generated_rx.try_recv() {}
+        println!("Drained channel");
+        
         for i in self.join_handles.iter_mut().enumerate() {
             if let Some(handle) = i.1.take() {
                 handle.join().unwrap();
@@ -198,21 +218,18 @@ impl<'a> Terrain<'a> {
         let sector = sector_at(&camera.translation());
         
         let mut info = self.shared_info.lock().unwrap();
-        if info.needed.len() < MAX_PENDING_SECTORS {
+        if info.needed.len() < MAX_PENDING_REQUESTS {
             for x in &GENERATE_ORDER {
                 for y in &GENERATE_ORDER {
                     for z in &GENERATE_ORDER {
                         let new_sector = (sector.0 + x, sector.1 + y, sector.2 + z);
                         if !self.sectors.contains_key(&new_sector) {
                             info.needed.entry(new_sector).or_insert(true);
-                        }        
+                        }
                     }
                 }
             }
         }
-        // Important!
-        mem::drop(info);
-        //
         
         self.sectors.retain(|&k, _| {
             let dx = k.0 as f32 - sector.0 as f32;
@@ -226,9 +243,23 @@ impl<'a> Terrain<'a> {
             dist_sq < 280.
         });
         
+        let begin = Instant::now();
         while let Ok(generated) = self.generated_rx.try_recv() {
             self.sectors.insert(generated.pos,
-                                Sector::new(self.resources, generated.pos, generated.list));
+                                Sector::new(self.resources,
+                                            generated.pos,
+                                            generated.list,
+                                            generated.vertices));
+        
+            let duration = Instant::now() - begin;
+            
+            let seconds = duration.as_secs() as f64 +
+                          duration.subsec_nanos() as f64 * 1e-9;
+            
+            if seconds > MAX_LAG {
+                //println!("too long: {}", seconds);
+                break;
+            }
         }
     }
     
@@ -455,8 +486,8 @@ impl<'a> UniformInterface for Uniforms {
 
 #[derive(Debug)]
 struct WorldGenThreadInfo {
-     needed: HashMap<(i32, i32, i32), bool>,
-     exiting: bool,
+    needed: HashMap<(i32, i32, i32), bool>,
+    exiting: bool,
 }
 
 type SharedInfo = Arc<Mutex<WorldGenThreadInfo>>;
@@ -474,6 +505,7 @@ impl Default for WorldGenThreadInfo {
 struct Generated {
     pos: (i32, i32, i32),
     list: BlockList,
+    vertices: Vec<Vertex>,
 }
 
 // The nearest sector at a translation.
