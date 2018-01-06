@@ -44,6 +44,10 @@ pub const SECTOR_SIZE: usize = 32;
 
 const CLEAR_COLOR: [f32; 4] = [0.2, 0.75, 0.8, 1.0];
 const COLLIDE_PADDING: f32 = 0.3;
+const NUM_THREADS: usize = 8;
+const GENERATE_ORDER: [i32; 5] = [0, -1, 1, 2, -2];
+const MAX_PENDING_SECTORS: usize = 256;
+//const MAX_PER_FRAME: usize = 32;
 
 /// Drawable manager for world terrain. Handles the rendering
 /// of each sector.
@@ -55,7 +59,9 @@ pub struct Terrain<'a> {
     shared_info: SharedInfo,
     //nearby_rx: Receiver<Nearby>,
     //needed_tx: Sender<(i32, i32, i32)>,
-    join_handle: Option<JoinHandle<()>>,
+    join_handles: [Option<JoinHandle<()>>; NUM_THREADS],
+    generated_tx: Sender<Generated>,
+    generated_rx: Receiver<Generated>,
 }
 
 impl<'a> Terrain<'a> {
@@ -92,6 +98,8 @@ impl<'a> Terrain<'a> {
         //let (needed_tx, needed_rx) = mpsc::channel();
         //TerrainGenThread::new(shared_info.clone(), nearby_tx, needed_rx).spawn();
         
+        let (generated_tx, generated_rx) = mpsc::channel();
+        
         Terrain {
             resources,
             sectors,
@@ -101,30 +109,64 @@ impl<'a> Terrain<'a> {
             shared_info: Arc::new(Mutex::new(Default::default())),
             //nearby_rx,
             //needed_tx,
-            join_handle: None,
+            join_handles: Default::default(),
+            generated_tx,
+            generated_rx,
         }
     }
     
     /// Spawn the world generation thread.
     /// The terrain will immediately begin generating.
     pub fn spawn_generator(&mut self) {
-        let shared_info = self.shared_info.clone();
-        
-        self.join_handle = Some(thread::spawn(move || {
-            loop {
-                let shared_info = shared_info.lock().unwrap();
+        for i in self.join_handles.iter_mut() {        
+            let shared_info = self.shared_info.clone();
+            let generated_tx = self.generated_tx.clone();
+            
+            *i = Some(thread::spawn(move || {
+                let wg = WorldGen::new();
                 
-                if shared_info.exiting {
-                    return;
+                loop {
+                    let mut shared_info = shared_info.lock().unwrap();
+                    
+                    if shared_info.exiting {
+                        return;
+                    }
+                    
+                    println!("len: {}", shared_info.needed.len());
+                    
+                    let mut sector = None;
+                    for i in shared_info.needed.iter_mut() {
+                        //println!("{:?}", i);
+                        if *i.1 {
+                            *i.1 = false;
+                            //println!("{:?}", i.0);
+                            
+                            sector = Some(*i.0);
+                            break;
+                        }
+                    }
+                    
+                    if let Some(s) = sector {
+                        shared_info.needed.remove(&s);
+                        mem::drop(shared_info);
+                        
+                        let generated = Generated {
+                            pos: s,
+                            list: wg.generate(s),
+                        };
+                        
+                        let _ = generated_tx.send(generated);
+                    } else {
+                        mem::drop(shared_info);
+                    }
+                    
+                    // ABSOLUTELY CRITICAL
+                    // to avoid deadlock
+                    thread::sleep(Duration::from_millis(5));
+                    //
                 }
-                
-                // ABSOLUTELY CRITICAL
-                // to avoid deadlock
-                mem::drop(shared_info);
-                thread::sleep(Duration::from_millis(500));
-                //
-            }
-        }));
+            }));
+        }
     }
     
     // Stop generating the world, terminating and joining
@@ -136,13 +178,15 @@ impl<'a> Terrain<'a> {
     // This function blocks while joining and while waiting
     // to acquire a mutex.
     fn stop_generator(&mut self) {
-        if let Some(handle) = self.join_handle.take() {
-            println!("Stopping worldgen thread...");
-            self.shared_info.lock().unwrap().exiting = true;
-            println!("Aquired lock");
-            
-            handle.join().unwrap();
-            println!("Joined worldgen thread");
+        println!("Stopping worldgen thread...");
+        self.shared_info.lock().unwrap().exiting = true;
+        println!("Aquired lock");
+        
+        for i in self.join_handles.iter_mut().enumerate() {
+            if let Some(handle) = i.1.take() {
+                handle.join().unwrap();
+                println!("Joined worldgen thread {}", i.0);
+            }
         }
     }
     
@@ -152,6 +196,24 @@ impl<'a> Terrain<'a> {
         //self.shared_info.lock().unwrap().player_pos = translation.clone();
         
         let sector = sector_at(&camera.translation());
+        
+        let mut info = self.shared_info.lock().unwrap();
+        if info.needed.len() < MAX_PENDING_SECTORS {
+            for x in &GENERATE_ORDER {
+                for y in &GENERATE_ORDER {
+                    for z in &GENERATE_ORDER {
+                        let new_sector = (sector.0 + x, sector.1 + y, sector.2 + z);
+                        if !self.sectors.contains_key(&new_sector) {
+                            info.needed.entry(new_sector).or_insert(true);
+                        }        
+                    }
+                }
+            }
+        }
+        // Important!
+        mem::drop(info);
+        //
+        
         self.sectors.retain(|&k, _| {
             let dx = k.0 as f32 - sector.0 as f32;
             let dy = k.1 as f32 - sector.1 as f32;
@@ -163,6 +225,11 @@ impl<'a> Terrain<'a> {
             
             dist_sq < 280.
         });
+        
+        while let Ok(generated) = self.generated_rx.try_recv() {
+            self.sectors.insert(generated.pos,
+                                Sector::new(self.resources, generated.pos, generated.list));
+        }
     }
     
     /// Adjust for collisions with the terrain.
@@ -401,6 +468,12 @@ impl Default for WorldGenThreadInfo {
             exiting: false,
         }
     }
+}
+
+// A generated `BlockList`
+struct Generated {
+    pos: (i32, i32, i32),
+    list: BlockList,
 }
 
 // The nearest sector at a translation.
