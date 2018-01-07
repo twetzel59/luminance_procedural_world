@@ -176,7 +176,13 @@ impl BlockList {
 }
 
 /// An iterator over a BlockList.
-pub struct BlockListIter<'a>(iter::Enumerate<slice::Iter<'a, Block>>);
+pub struct BlockListIter<'a> {
+    //inner: iter::Enumerate<slice::Iter<'a, Block>>,
+    list: &'a BlockList,
+    x: u8,
+    y: u8,
+    z: u8,
+}
 
 type BlockListIterItem<'a> = (SectorSpaceCoords, &'a Block);
 
@@ -184,6 +190,7 @@ impl<'a> Iterator for BlockListIter<'a> {
     type Item = BlockListIterItem<'a>;
     
     fn next(&mut self) -> Option<Self::Item> {
+        /*
         match self.0.next() {
             Some(i) => {
                 let mut total = i.0;
@@ -205,6 +212,33 @@ impl<'a> Iterator for BlockListIter<'a> {
             },
             None => None,
         }
+        */
+        
+        //println!("{} {} {}", self.x, self.y, self.z);
+        
+        if self.x + 1 < SECTOR_SIZE as u8 {
+            self.x += 1;
+        } else {
+            self.x = 0;
+            
+            if self.y + 1 < SECTOR_SIZE as u8 {
+                self.y += 1;
+            } else {
+                self.y = 0;
+                
+                if self.z + 1 < SECTOR_SIZE as u8 {
+                    self.z += 1;
+                } else {
+                    return None;
+                }
+            }
+        }
+        
+        let coords = (SectorSpaceCoords::new(self.x, self.y, self.z));
+        
+        //println!("{:?}", coords);
+        
+        Some((coords, self.list.get(coords)))
     }
 }
 
@@ -213,7 +247,12 @@ impl<'a> IntoIterator for &'a BlockList {
     type IntoIter = BlockListIter<'a>;
     
     fn into_iter(self) -> BlockListIter<'a> {
-        BlockListIter(self.0.iter().enumerate())
+        BlockListIter {
+            list: self,
+            x: 0,
+            y: 0,
+            z: 0,
+        }
     }
 }
 
