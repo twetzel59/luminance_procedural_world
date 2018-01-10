@@ -1,7 +1,7 @@
 //! Procedural world generation.
 
 use noise::{BasicMulti, MultiFractal, NoiseModule};
-use super::SECTOR_SIZE;
+use super::{SECTOR_LEN, SECTOR_SIZE, SECTOR_SIZE_S};
 use super::voxel::{Block, BlockList, SectorSpaceCoords};
 
 const SECTOR_SIZE_F: f32 = SECTOR_SIZE as f32;
@@ -100,8 +100,8 @@ impl WorldGen {
         if sector.1 == 0 {
             let mut list = BlockList::new_air();
             
-            for x in 0..SECTOR_SIZE {
-                for z in 0..SECTOR_SIZE {
+            for x in 0..SECTOR_SIZE_S {
+                for z in 0..SECTOR_SIZE_S {
                     let (fx, fz) = (x as f32, z as f32);
                     let (s0, s2) = (sector.0 as f32, sector.2 as f32);
                     
@@ -121,17 +121,17 @@ impl WorldGen {
                     
                     let middle = SECTOR_SIZE_F / 2.;
                     
-                    let highest = (middle + height * 40.).max(0.).min(SECTOR_SIZE_F) as usize;
+                    let highest = (middle + height * 40.).max(0.).min(SECTOR_SIZE_F) as isize;
                     
                     //println!("highest: {}", highest);
                     
                     for y in 0..highest {
-                        list.set(SectorSpaceCoords::new(x as u8, y as u8, z as u8),
+                        list.set(SectorSpaceCoords::new(x, y, z),
                                  Block::Grass);
                     }
                     
                     // Trees
-                    if x >= 3 && x <= SECTOR_SIZE - 3 && z >= 3 && z <= SECTOR_SIZE - 3 && highest < SECTOR_SIZE - 8 {
+                    if x >= 3 && x <= SECTOR_SIZE_S - 3 && z >= 3 && z <= SECTOR_SIZE_S - 3 && highest < SECTOR_SIZE_S - 8 {
                         let tree_chance = self.tree.0.get(
                             [fx + SECTOR_SIZE_F * s0 * 1.1,
                              fz + SECTOR_SIZE_F * s2 * 1.1]);
@@ -148,12 +148,12 @@ impl WorldGen {
                                 //         Block::Loam);
                                 
                                 for h in 0..8 {
-                                    list.set(SectorSpaceCoords::new(x as u8, (h + highest) as u8, z as u8),
+                                    list.set(SectorSpaceCoords::new(x, h + highest, z),
                                              Block::Tree);
-                                    for dx in -2i32..3 {
-                                        for dy in 4i32..8 {
-                                            for dz in -2i32..3 {
-                                                list.set(SectorSpaceCoords::new((x as i32 + dx) as u8, (highest as i32 + dy) as u8, (z as i32  + dz) as u8),
+                                    for dx in -2..3 {
+                                        for dy in 4..8 {
+                                            for dz in -2..3 {
+                                                list.set(SectorSpaceCoords::new(x + dx, highest + dy, z + dz),
                                                          Block::Leaves);
                                             }
                                         }
@@ -167,9 +167,19 @@ impl WorldGen {
             
             list
         } else if sector.1 == -1 {
-            BlockList::new([Block::Limestone; SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE])
+            BlockList::new([Block::Limestone; SECTOR_LEN])
         } else {
             BlockList::new_air()
         }
+        
+        /*
+        for x in 0..SECTOR_SIZE_S {
+            for z in 0..SECTOR_SIZE_S {
+                for y in 0..SECTOR_SIZE_S {
+                    let h = y + sector.1 as isize;
+                }
+            }
+        }
+        */
     }
 }

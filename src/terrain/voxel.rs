@@ -2,7 +2,7 @@
 
 use std::{iter, slice};
 use luminance::tess::{Mode, Tess, TessVertices};
-use super::{Vertex, SECTOR_SIZE};
+use super::{Vertex, SECTOR_LEN, SECTOR_SIZE, SECTOR_SIZE_S};
 use maths::Translation;
 use model::Model;
 use resources::Resources;
@@ -39,23 +39,21 @@ impl Block {
     }
 }
 
-// The length of an array of blocks for a sector.
-const SECTOR_LEN: usize = SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE;
-
 /// The type of sector space coordinates.
 #[derive(Clone, Copy, Debug)]
 pub struct SectorSpaceCoords {
-    x: u8,
-    y: u8,
-    z: u8,
+    x: isize,
+    y: isize,
+    z: isize,
 }
 
 impl SectorSpaceCoords {
     /// Create a new coordinate triple.
     /// # Panics
     /// Panics if any component is >= `SECTOR_SIZE`.
-    pub fn new(x: u8, y: u8, z: u8) -> SectorSpaceCoords {
-        if x as usize >= SECTOR_SIZE || y as usize >= SECTOR_SIZE || z as usize >= SECTOR_SIZE {
+    pub fn new(x: isize, y: isize, z: isize) -> SectorSpaceCoords {
+        if x < 0              || y < 0              || z < 0              ||
+           x >= SECTOR_SIZE_S || y >= SECTOR_SIZE_S || z >= SECTOR_SIZE_S {
             panic!("SectorSpaceCoords out of range");
         }
         
@@ -69,7 +67,7 @@ impl SectorSpaceCoords {
     /// If possible, create the coord for the block
     /// behind this one.
     pub fn back(&self) -> Option<SectorSpaceCoords> {
-        if (self.z as usize) > 0 {
+        if self.z > 0 {
             Some(Self::new(self.x, self.y, self.z - 1))
         } else {
             None
@@ -79,7 +77,7 @@ impl SectorSpaceCoords {
     /// If possible, create the coord for the block
     /// in front of this one.
     pub fn front(&self) -> Option<SectorSpaceCoords> {
-        if (self.z as usize) < SECTOR_SIZE - 1 {
+        if self.z < SECTOR_SIZE_S - 1 {
             Some(Self::new(self.x, self.y, self.z + 1))
         } else {
             None
@@ -89,7 +87,7 @@ impl SectorSpaceCoords {
     /// If possible, create the coord for the block
     /// above this one.
     pub fn top(&self) -> Option<SectorSpaceCoords> {
-        if (self.y as usize) < SECTOR_SIZE - 1 {
+        if self.y < SECTOR_SIZE_S - 1 {
             Some(Self::new(self.x, self.y + 1, self.z))
         } else {
             None
@@ -99,7 +97,7 @@ impl SectorSpaceCoords {
     /// If possible, create the coord for the block
     /// below this one.
     pub fn bottom(&self) -> Option<SectorSpaceCoords> {
-        if (self.y as usize) > 0 {
+        if self.y > 0 {
             Some(Self::new(self.x, self.y - 1, self.z))
         } else {
             None
@@ -109,7 +107,7 @@ impl SectorSpaceCoords {
     /// If possible, create the coord for the block
     /// to the left of this one.
     pub fn left(&self) -> Option<SectorSpaceCoords> {
-        if (self.x as usize) > 0 {
+        if self.x > 0 {
             Some(Self::new(self.x - 1, self.y, self.z))
         } else {
             None
@@ -119,16 +117,16 @@ impl SectorSpaceCoords {
     /// If possible, create the coord for the block
     /// to the right of this one.
     pub fn right(&self) -> Option<SectorSpaceCoords> {
-        if (self.x as usize) < SECTOR_SIZE - 1 {
+        if self.x < SECTOR_SIZE_S - 1 {
             Some(Self::new(self.x + 1, self.y, self.z))
         } else {
             None
         }
     }
     
-    pub fn x(&self) -> u8 { self.x }
-    pub fn y(&self) -> u8 { self.y }
-    pub fn z(&self) -> u8 { self.z }
+    pub fn x(&self) -> isize { self.x }
+    pub fn y(&self) -> isize { self.y }
+    pub fn z(&self) -> isize { self.z }
 }
 
 /// The array structure of blocks in a `Sector`.
@@ -168,7 +166,7 @@ impl BlockList {
     }
     
     // Determines the internal index of sector coords.
-    fn index(pos: SectorSpaceCoords) -> usize {
+    fn index(pos: SectorSpaceCoords) -> usize {        
         let (x, y, z) = (pos.x() as usize, pos.y() as usize, pos.z() as usize);
         
         x + y * SECTOR_SIZE + z * SECTOR_SIZE * SECTOR_SIZE
@@ -179,9 +177,9 @@ impl BlockList {
 pub struct BlockListIter<'a> {
     //inner: iter::Enumerate<slice::Iter<'a, Block>>,
     list: &'a BlockList,
-    x: u8,
-    y: u8,
-    z: u8,
+    x: isize,
+    y: isize,
+    z: isize,
 }
 
 type BlockListIterItem<'a> = (SectorSpaceCoords, &'a Block);
@@ -216,17 +214,17 @@ impl<'a> Iterator for BlockListIter<'a> {
         
         //println!("{} {} {}", self.x, self.y, self.z);
         
-        if self.x + 1 < SECTOR_SIZE as u8 {
+        if self.x + 1 < SECTOR_SIZE_S {
             self.x += 1;
         } else {
             self.x = 0;
             
-            if self.y + 1 < SECTOR_SIZE as u8 {
+            if self.y + 1 < SECTOR_SIZE_S {
                 self.y += 1;
             } else {
                 self.y = 0;
                 
-                if self.z + 1 < SECTOR_SIZE as u8 {
+                if self.z + 1 < SECTOR_SIZE_S {
                     self.z += 1;
                 } else {
                     return None;

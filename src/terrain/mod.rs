@@ -44,6 +44,13 @@ type Vertex = (Position, UV, FaceNum);
 /// The length of one side of a cubic sector.
 pub const SECTOR_SIZE: usize = 32;
 
+/// A signed variant of the sector size to reduce instances
+/// of `as T` :P
+const SECTOR_SIZE_S: isize = SECTOR_SIZE as isize;
+
+/// The length of an array of blocks for a sector.
+pub const SECTOR_LEN: usize = SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE;
+
 const CLEAR_COLOR: [f32; 4] = [0.2, 0.75, 0.8, 1.0];
 const COLLIDE_PADDING: f32 = 0.3;
 const NUM_THREADS: usize = 8;
@@ -332,16 +339,16 @@ impl<'a> Terrain<'a> {
     fn get_visible_block(&self, pos: &Translation) -> Option<&Block> {
         let sector_pos = sector_at(pos);
         
-        let pos = (pos.x.round() as i32, pos.y.round() as i32, pos.z.round() as i32);
+        let pos = (pos.x.round() as isize, pos.y.round() as isize, pos.z.round() as isize);
         
         if let Some(sector) = self.sectors.get(&sector_pos) {
             if sector.model().is_none() && sector.blocks().needs_rendering() {
                 return None;
             }
             
-            let local = SectorSpaceCoords::new((pos.0 - sector_pos.0 * SECTOR_SIZE as i32) as u8,
-                                               (pos.1 - sector_pos.1 * SECTOR_SIZE as i32) as u8,
-                                               (pos.2 - sector_pos.2 * SECTOR_SIZE as i32) as u8);
+            let local = SectorSpaceCoords::new(pos.0 - sector_pos.0 as isize * SECTOR_SIZE_S,
+                                               pos.1 - sector_pos.1 as isize * SECTOR_SIZE_S,
+                                               pos.2 - sector_pos.2 as isize * SECTOR_SIZE_S);
             
             Some(sector.blocks().get(local))
         } else {
