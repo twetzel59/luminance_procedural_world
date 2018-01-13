@@ -1,7 +1,7 @@
 //! A module for managing the voxels in the world.
 
 use luminance::tess::{Mode, Tess, TessVertices};
-use super::{Vertex, SECTOR_LEN, SECTOR_SIZE, SECTOR_SIZE_S};
+use super::{Vertex, SECTOR_LEN, SECTOR_SIZE, SECTOR_SIZE_U32};
 use maths::Translation;
 use model::Model;
 use resources::Resources;
@@ -41,18 +41,17 @@ impl Block {
 /// The type of sector space coordinates.
 #[derive(Clone, Copy, Debug)]
 pub struct SectorSpaceCoords {
-    x: isize,
-    y: isize,
-    z: isize,
+    x: u32,
+    y: u32,
+    z: u32,
 }
 
 impl SectorSpaceCoords {
     /// Create a new coordinate triple.
     /// # Panics
     /// Panics if any component is >= `SECTOR_SIZE`.
-    pub fn new(x: isize, y: isize, z: isize) -> SectorSpaceCoords {
-        if x < 0              || y < 0              || z < 0              ||
-           x >= SECTOR_SIZE_S || y >= SECTOR_SIZE_S || z >= SECTOR_SIZE_S {
+    pub fn new(x: u32, y: u32, z: u32) -> SectorSpaceCoords {
+        if x >= SECTOR_SIZE_U32 || y >= SECTOR_SIZE_U32 || z >= SECTOR_SIZE_U32 {
             panic!("SectorSpaceCoords out of range");
         }
         
@@ -76,7 +75,7 @@ impl SectorSpaceCoords {
     /// If possible, create the coord for the block
     /// in front of this one.
     pub fn front(&self) -> Option<SectorSpaceCoords> {
-        if self.z < SECTOR_SIZE_S - 1 {
+        if self.z < SECTOR_SIZE_U32 - 1 {
             Some(Self::new(self.x, self.y, self.z + 1))
         } else {
             None
@@ -86,7 +85,7 @@ impl SectorSpaceCoords {
     /// If possible, create the coord for the block
     /// above this one.
     pub fn top(&self) -> Option<SectorSpaceCoords> {
-        if self.y < SECTOR_SIZE_S - 1 {
+        if self.y < SECTOR_SIZE_U32 - 1 {
             Some(Self::new(self.x, self.y + 1, self.z))
         } else {
             None
@@ -116,16 +115,16 @@ impl SectorSpaceCoords {
     /// If possible, create the coord for the block
     /// to the right of this one.
     pub fn right(&self) -> Option<SectorSpaceCoords> {
-        if self.x < SECTOR_SIZE_S - 1 {
+        if self.x < SECTOR_SIZE_U32 - 1 {
             Some(Self::new(self.x + 1, self.y, self.z))
         } else {
             None
         }
     }
     
-    pub fn x(&self) -> isize { self.x }
-    pub fn y(&self) -> isize { self.y }
-    pub fn z(&self) -> isize { self.z }
+    pub fn x(&self) -> u32 { self.x }
+    pub fn y(&self) -> u32 { self.y }
+    pub fn z(&self) -> u32 { self.z }
 }
 
 /// The array structure of blocks in a `Sector`.
@@ -176,9 +175,9 @@ impl BlockList {
 pub struct BlockListIter<'a> {
     //inner: iter::Enumerate<slice::Iter<'a, Block>>,
     list: &'a BlockList,
-    x: isize,
-    y: isize,
-    z: isize,
+    x: u32,
+    y: u32,
+    z: u32,
 }
 
 type BlockListIterItem<'a> = (SectorSpaceCoords, &'a Block);
@@ -213,17 +212,20 @@ impl<'a> Iterator for BlockListIter<'a> {
         
         //println!("{} {} {}", self.x, self.y, self.z);
         
-        if self.x + 1 < SECTOR_SIZE_S {
+        let coords = SectorSpaceCoords::new(self.x, self.y, self.z);
+        let result = Some((coords, self.list.get(coords)));
+        
+        if self.x + 1 < SECTOR_SIZE_U32 {
             self.x += 1;
         } else {
             self.x = 0;
             
-            if self.y + 1 < SECTOR_SIZE_S {
+            if self.y + 1 < SECTOR_SIZE_U32 {
                 self.y += 1;
             } else {
                 self.y = 0;
                 
-                if self.z + 1 < SECTOR_SIZE_S {
+                if self.z + 1 < SECTOR_SIZE_U32 {
                     self.z += 1;
                 } else {
                     return None;
@@ -231,11 +233,9 @@ impl<'a> Iterator for BlockListIter<'a> {
             }
         }
         
-        let coords = SectorSpaceCoords::new(self.x, self.y, self.z);
-        
         //println!("{:?}", coords);
-        
-        Some((coords, self.list.get(coords)))
+     
+        result
     }
 }
 
@@ -246,7 +246,7 @@ impl<'a> IntoIterator for &'a BlockList {
     fn into_iter(self) -> BlockListIter<'a> {
         BlockListIter {
             list: self,
-            x: -1, // Starts at 0, b/c next() increments x.
+            x: 0,
             y: 0,
             z: 0,
         }
