@@ -1,7 +1,8 @@
 //! A module for managing the voxels in the world.
 
 use luminance::tess::{Mode, Tess, TessVertices};
-use super::{Vertex, SECTOR_LEN, SECTOR_SIZE, SECTOR_SIZE_U32};
+use super::{Vertex, SECTOR_LEN, SECTOR_PAD_U32, SECTOR_SIZE_PAD,
+            SECTOR_SIZE, SECTOR_SIZE_PAD_U32, SECTOR_SIZE_U32};
 use maths::Translation;
 use model::Model;
 use resources::Resources;
@@ -51,7 +52,7 @@ impl SectorSpaceCoords {
     /// # Panics
     /// Panics if any component is >= `SECTOR_SIZE`.
     pub fn new(x: u32, y: u32, z: u32) -> SectorSpaceCoords {
-        if x >= SECTOR_SIZE_U32 || y >= SECTOR_SIZE_U32 || z >= SECTOR_SIZE_U32 {
+        if x >= SECTOR_SIZE_PAD_U32 || y >= SECTOR_SIZE_PAD_U32 || z >= SECTOR_SIZE_PAD_U32 {
             panic!("SectorSpaceCoords out of range");
         }
         
@@ -75,7 +76,7 @@ impl SectorSpaceCoords {
     /// If possible, create the coord for the block
     /// in front of this one.
     pub fn front(&self) -> Option<SectorSpaceCoords> {
-        if self.z < SECTOR_SIZE_U32 - 1 {
+        if self.z < SECTOR_SIZE_PAD_U32 - 1 {
             Some(Self::new(self.x, self.y, self.z + 1))
         } else {
             None
@@ -85,7 +86,7 @@ impl SectorSpaceCoords {
     /// If possible, create the coord for the block
     /// above this one.
     pub fn top(&self) -> Option<SectorSpaceCoords> {
-        if self.y < SECTOR_SIZE_U32 - 1 {
+        if self.y < SECTOR_SIZE_PAD_U32 - 1 {
             Some(Self::new(self.x, self.y + 1, self.z))
         } else {
             None
@@ -115,7 +116,7 @@ impl SectorSpaceCoords {
     /// If possible, create the coord for the block
     /// to the right of this one.
     pub fn right(&self) -> Option<SectorSpaceCoords> {
-        if self.x < SECTOR_SIZE_U32 - 1 {
+        if self.x < SECTOR_SIZE_PAD_U32 - 1 {
             Some(Self::new(self.x + 1, self.y, self.z))
         } else {
             None
@@ -167,7 +168,7 @@ impl BlockList {
     fn index(pos: SectorSpaceCoords) -> usize {        
         let (x, y, z) = (pos.x() as usize, pos.y() as usize, pos.z() as usize);
         
-        x + y * SECTOR_SIZE + z * SECTOR_SIZE * SECTOR_SIZE
+        x + y * SECTOR_SIZE_PAD + z * SECTOR_SIZE_PAD * SECTOR_SIZE_PAD
     }
 }
 
@@ -212,20 +213,17 @@ impl<'a> Iterator for BlockListIter<'a> {
         
         //println!("{} {} {}", self.x, self.y, self.z);
         
-        let coords = SectorSpaceCoords::new(self.x, self.y, self.z);
-        let result = Some((coords, self.list.get(coords)));
-        
-        if self.x + 1 < SECTOR_SIZE_U32 {
+        if self.x < SECTOR_SIZE_U32 {
             self.x += 1;
         } else {
-            self.x = 0;
+            self.x = SECTOR_PAD_U32;
             
-            if self.y + 1 < SECTOR_SIZE_U32 {
+            if self.y < SECTOR_SIZE_U32 {
                 self.y += 1;
             } else {
-                self.y = 0;
+                self.y = SECTOR_PAD_U32;
                 
-                if self.z + 1 < SECTOR_SIZE_U32 {
+                if self.z < SECTOR_SIZE_U32 {
                     self.z += 1;
                 } else {
                     return None;
@@ -233,9 +231,12 @@ impl<'a> Iterator for BlockListIter<'a> {
             }
         }
         
+        let coords = SectorSpaceCoords::new(self.x, self.y, self.z);
+        
         //println!("{:?}", coords);
+        //::std::thread::sleep(::std::time::Duration::from_millis(250));
      
-        result
+        Some((coords, self.list.get(coords)))
     }
 }
 
@@ -246,9 +247,9 @@ impl<'a> IntoIterator for &'a BlockList {
     fn into_iter(self) -> BlockListIter<'a> {
         BlockListIter {
             list: self,
-            x: 0,
-            y: 0,
-            z: 0,
+            x: SECTOR_PAD_U32 - 1, // next() increments, so starts at constant (like others).
+            y: SECTOR_PAD_U32,
+            z: SECTOR_PAD_U32,
         }
     }
 }

@@ -1,7 +1,7 @@
 //! Procedural world generation.
 
 use noise::{BasicMulti, MultiFractal, NoiseModule};
-use super::{SECTOR_LEN, SECTOR_SIZE, SECTOR_SIZE_U32};
+use super::{SECTOR_LEN, SECTOR_SIZE, SECTOR_SIZE_PAD_U32};
 use super::voxel::{Block, BlockList, SectorSpaceCoords};
 
 const SECTOR_SIZE_F: f32 = SECTOR_SIZE as f32;
@@ -186,9 +186,9 @@ impl WorldGen {
         
         let mut list = BlockList::new_air();
         
-        for x in 0..SECTOR_SIZE_U32 {
-            for z in 0..SECTOR_SIZE_U32 {
-                for y in 0..SECTOR_SIZE_U32 {
+        for x in 0..SECTOR_SIZE_PAD_U32 {
+            for z in 0..SECTOR_SIZE_PAD_U32 {
+                for y in 0..SECTOR_SIZE_PAD_U32 {
                     let h = y as i32 + sector.1 * SECTOR_SIZE as i32;
                     
                     if h <= 0 {

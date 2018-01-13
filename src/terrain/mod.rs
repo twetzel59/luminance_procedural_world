@@ -41,18 +41,26 @@ type FaceNum = u32;
 // A terrain vertex.
 type Vertex = (Position, UV, FaceNum);
 
-/// The length of one side of a cubic sector.
+/// The length of one side of a cubic sector, **excluding** padding.
 pub const SECTOR_SIZE: usize = 32;
 
-///// A signed variant of the sector size to reduce instances
-///// of `as T` :P
-//pub const SECTOR_SIZE_S: isize = SECTOR_SIZE as isize;
-
-/// A variant of the sector size of the type `u64`.
+/// A variant of the sector size of the type `u32`.
 pub const SECTOR_SIZE_U32: u32 = SECTOR_SIZE as u32;
 
+/// The amount of padding on each side of a cubic side of a sector.
+pub const SECTOR_PAD: usize = 1;
+
+/// A variant of the amount of sector padding of the type `u32`.
+pub const SECTOR_PAD_U32: u32 = SECTOR_PAD as u32;
+
+/// The length of a sector's side, including padding.
+pub const SECTOR_SIZE_PAD: usize = SECTOR_PAD + SECTOR_SIZE + SECTOR_PAD;
+
+/// A variant of the padded sector size of type type `u32`.
+pub const SECTOR_SIZE_PAD_U32: u32 = SECTOR_SIZE_PAD as u32;
+
 /// The length of an array of blocks for a sector.
-pub const SECTOR_LEN: usize = SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE;
+pub const SECTOR_LEN: usize = SECTOR_SIZE_PAD * SECTOR_SIZE_PAD * SECTOR_SIZE_PAD;
 
 const CLEAR_COLOR: [f32; 4] = [0.2, 0.75, 0.8, 1.0];
 const COLLIDE_PADDING: f32 = 0.3;

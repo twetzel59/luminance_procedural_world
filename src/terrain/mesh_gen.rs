@@ -2,7 +2,7 @@
 //! from `Sector`.
 
 use png::OutputInfo;
-use super::{Position, UV, Vertex, SECTOR_LEN};
+use super::{Position, UV, Vertex, SECTOR_SIZE, SECTOR_PAD_U32};
 use super::voxel::{Block, BlockList, SectorSpaceCoords};
 
 /*
@@ -51,7 +51,7 @@ enum Face {
 pub fn generate_block_vertices(blocks: &BlockList, texture_info: &OutputInfo) -> Vec<Vertex> {
     use self::Face::*;
     
-    let mut v = Vec::with_capacity(SECTOR_LEN * 24);
+    let mut v = Vec::with_capacity(SECTOR_SIZE * SECTOR_SIZE * SECTOR_SIZE * 24);
     
     for i in blocks {
         if !i.1.is_air() {
@@ -91,7 +91,7 @@ pub fn generate_block_vertices(blocks: &BlockList, texture_info: &OutputInfo) ->
 fn should_create_face(face: Face, coord: SectorSpaceCoords, blocks: &BlockList) -> bool {
     use self::Face::*;
     
-    let (block_list, other_coord) = match face {
+    let other_coord = match face {
         /*
             if let Some(c) = coord.back() {
                 (blocks, Some(c))
@@ -158,12 +158,12 @@ fn should_create_face(face: Face, coord: SectorSpaceCoords, blocks: &BlockList) 
             }, |c| (blocks, Some(c))),
         */
         
-        Back => (blocks, coord.back()),
-        Front => (blocks, coord.front()),
-        Top => (blocks, coord.top()),
-        Bottom => (blocks, coord.bottom()),
-        Left => (blocks, coord.left()),
-        Right => (blocks, coord.right()),
+        Back => coord.back(),
+        Front => coord.front(),
+        Top => coord.top(),
+        Bottom => coord.bottom(),
+        Left => coord.left(),
+        Right => coord.right(),
         
         /*
         Back =>
@@ -193,7 +193,8 @@ fn should_create_face(face: Face, coord: SectorSpaceCoords, blocks: &BlockList) 
         */
     };
     
-    other_coord.map_or(true, |c| !block_list.get(c).needs_rendering())
+    //other_coord.map_or(true, |c| !block_list.get(c).needs_rendering())
+    !blocks.get(other_coord.unwrap()).needs_rendering()
 }
 
 fn generate_face(v: &mut Vec<Vertex>, block: (SectorSpaceCoords, &Block),
@@ -213,7 +214,9 @@ fn generate_face(v: &mut Vec<Vertex>, block: (SectorSpaceCoords, &Block),
         Right => ([3, 2, 5, 4], uvs),
     };
     
-    let original = ((block.0).x() as f32, (block.0).y() as f32, (block.0).z() as f32);
+    let original = (((block.0).x() - SECTOR_PAD_U32) as f32,
+                    ((block.0).y() - SECTOR_PAD_U32) as f32,
+                    ((block.0).z() - SECTOR_PAD_U32) as f32);
     
     let mut vtx0 = (POSITIONS[triangles[0]], uv.0, face as u32);
     vtx0.0[0] += original.0;
