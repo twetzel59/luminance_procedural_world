@@ -1,6 +1,5 @@
 //! A module for managing the voxels in the world.
 
-use std::{iter, slice};
 use luminance::tess::{Mode, Tess, TessVertices};
 use super::{Vertex, SECTOR_LEN, SECTOR_SIZE, SECTOR_SIZE_S};
 use maths::Translation;
@@ -232,7 +231,7 @@ impl<'a> Iterator for BlockListIter<'a> {
             }
         }
         
-        let coords = (SectorSpaceCoords::new(self.x, self.y, self.z));
+        let coords = SectorSpaceCoords::new(self.x, self.y, self.z);
         
         //println!("{:?}", coords);
         
@@ -247,7 +246,7 @@ impl<'a> IntoIterator for &'a BlockList {
     fn into_iter(self) -> BlockListIter<'a> {
         BlockListIter {
             list: self,
-            x: 0,
+            x: -1, // Starts at 0, b/c next() increments x.
             y: 0,
             z: 0,
         }
