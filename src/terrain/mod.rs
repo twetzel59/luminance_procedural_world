@@ -132,7 +132,7 @@ impl<'a> Terrain<'a> {
                         return;
                     }
                     
-                    println!("len: {}", shared_info.needed.len());
+                    //println!("len: {}", shared_info.needed.len());
                     
                     let mut sector = None;
                     for i in shared_info.needed.iter_mut() {

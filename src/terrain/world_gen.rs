@@ -1,18 +1,27 @@
 //! Procedural world generation.
 
 use noise::{BasicMulti, MultiFractal, NoiseModule};
-use super::{SECTOR_LEN, SECTOR_SIZE, SECTOR_SIZE_PAD_U32};
+use super::{SECTOR_SIZE, SECTOR_SIZE_PAD, SECTOR_SIZE_PAD_U32};
 use super::voxel::{Block, BlockList, SectorSpaceCoords};
 
 const SECTOR_SIZE_F: f32 = SECTOR_SIZE as f32;
+
+const BASE_HEIGHT_IN_MULTI:   f32 = 0.001487954789249589592;
+const BASE_HEIGHT_OUT_MULTI:  f32 = 220.;
+
+const LOCAL_HEIGHT_IN_MULTI:  f32 = 0.0165490832418560983421;
+const LOCAL_HEIGHT_OUT_MULTI: f32 = 5.;
+
+const TREE_CHANCE_1_MULTI:    f32 = 1.1;
+const TREE_CHANCE_2_MULTI:    f32 = 0.55;
+const TREE_CHANCE_CUTOFF:     f32 = 0.25;
 
 /// The world generator.
 #[derive(Clone)]
 pub struct WorldGen {
     //perlin: Perlin,
     base_terrain: BasicMulti<f32>,
-    compression: BasicMulti<f32>,
-    general_height: BasicMulti<f32>,
+    local_height: BasicMulti<f32>,
     tree: (BasicMulti<f32>, BasicMulti<f32>),
 }
 
@@ -21,9 +30,8 @@ impl WorldGen {
     pub fn new() -> WorldGen {
         WorldGen {
             //perlin: Perlin::new(),
-            base_terrain: BasicMulti::new().set_persistence(0.1),
-            compression: BasicMulti::new().set_persistence(0.05),
-            general_height: BasicMulti::new().set_octaves(4).set_frequency(0.5),
+            base_terrain: BasicMulti::new().set_octaves(4).set_frequency(0.5),
+            local_height: BasicMulti::new().set_persistence(0.1),
             tree: (BasicMulti::new().set_frequency(0.01),
                    BasicMulti::new().set_frequency(1.0)),
         }
@@ -36,6 +44,43 @@ impl WorldGen {
     */
     
     pub fn generate(&self, sector: (i32, i32, i32)) -> BlockList {
+        let mut list = BlockList::new_air();
+        
+        for x in 0..SECTOR_SIZE_PAD_U32 {
+            for z in 0..SECTOR_SIZE_PAD_U32 {
+                let (fx, fz) = (x as f32, z as f32);
+                let (s0, s2) = (sector.0 as f32, sector.2 as f32);
+                
+                let (px, pz) = (fx + s0 * SECTOR_SIZE_F,
+                                fz + s2 * SECTOR_SIZE_F);
+                
+                let base_h = self.base_terrain.get(
+                        [px * BASE_HEIGHT_IN_MULTI,
+                         pz * BASE_HEIGHT_IN_MULTI])
+                    * BASE_HEIGHT_OUT_MULTI;
+                
+                let local_h = self.local_height.get(
+                        [px * LOCAL_HEIGHT_IN_MULTI,
+                         pz * LOCAL_HEIGHT_IN_MULTI])
+                    * LOCAL_HEIGHT_OUT_MULTI;
+                
+                let max = (base_h + local_h).round() as i32;
+                
+                for y in 0..SECTOR_SIZE_PAD_U32 {
+                    let h = y as i32 + sector.1 * SECTOR_SIZE as i32;
+                    
+                    if h < max {
+                        list.set(SectorSpaceCoords::new(x, y, z),
+                                 Block::Grass);
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+        
+        list
+        
         /*
         if sector.1 > 0 {
             BlockList::new(
@@ -184,6 +229,7 @@ impl WorldGen {
         }
         */
         
+        /*
         let mut list = BlockList::new_air();
         
         for x in 0..SECTOR_SIZE_PAD_U32 {
@@ -202,5 +248,6 @@ impl WorldGen {
         }
         
         list
+        */
     }
 }
