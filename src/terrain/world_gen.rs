@@ -6,8 +6,8 @@ use super::voxel::{Block, BlockList, SectorSpaceCoords};
 
 const SECTOR_SIZE_F: f32 = SECTOR_SIZE as f32;
 
-const BASE_HEIGHT_IN_MULTI:   f32 = 0.001487954789249589592;
-const BASE_HEIGHT_OUT_MULTI:  f32 = 220.;
+const BASE_HEIGHT_IN_MULTI:   f32 = 0.0000111487954789249589592;
+const BASE_HEIGHT_OUT_MULTI:  f32 = 1.5;
 
 const LOCAL_HEIGHT_IN_MULTI:  f32 = 0.0165490832418560983421;
 const LOCAL_HEIGHT_OUT_MULTI: f32 = 5.;
@@ -30,7 +30,7 @@ impl WorldGen {
     pub fn new() -> WorldGen {
         WorldGen {
             //perlin: Perlin::new(),
-            base_terrain: BasicMulti::new().set_octaves(4).set_frequency(0.5),
+            base_terrain: BasicMulti::new().set_octaves(4).set_frequency(3.5).set_persistence(4.5),
             local_height: BasicMulti::new().set_persistence(0.1),
             tree: (BasicMulti::new().set_frequency(0.01),
                    BasicMulti::new().set_frequency(1.0)),
